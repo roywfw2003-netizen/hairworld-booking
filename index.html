@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Hair World 預約 (雲端密碼同步版)</title>
+    <!-- Font Awesome 6 圖示庫 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* 此處保留您原本的完整樣式，為節省篇幅省略，請保留原有樣式 */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #FFF5E6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 12px 0 30px 0; margin: 0; }
+        .app-container { width: 100%; max-width: 400px; background-color: white; border-radius: 32px 32px 0 0; box-shadow: 0 8px 30px rgba(247, 147, 49, 0.15); overflow: hidden; padding: 20px 20px 30px 20px; margin: 10px 12px; border: 1px solid #FFD8B2; }
+        /* ... 其餘樣式請保留原本完整內容，此處省略但實際使用時必須有 ... */
+    </style>
+</head>
+<body>
+<div class="app-container" id="appContainer">
+    <div class="brand"><h1>Hair World</h1><span>剪髮預約</span></div>
+
+    <!-- 預約頁 (請保留原有完整 HTML 結構) -->
+    <div id="bookingPage" class="page">...</div>
+
+    <!-- 管理員月曆頁 (請保留原有完整 HTML 結構) -->
+    <div id="calendarPage" class="page hidden">...</div>
+</div>
+
+<script>
+    (function() {
+        // ==================== 全域設定 ====================
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/你的部署網址/exec'; // 請替換為你的 Apps Script 網址
+
+        const PASSWORD_KEY = 'hairWorldAdminPassword';      // 用於本地快取，非主要驗證
+        const DEVICE_ID_KEY = 'hairWorldDeviceId';
+        const ACTIVITY_KEY = 'hairWorldActivity';
+        const SHADOW_KEY = 'hairWorldShadowMarks';
+        const SYNC_MAIN_KEY = 'hairWorldSyncMain';
+
+        // 設備 ID (與之前相同)
+        function getDeviceId() { /* ... 原有實作 ... */ }
+        const deviceId = getDeviceId();
+
+        // 活動記錄 (與之前相同)
+        let activities = JSON.parse(localStorage.getItem(ACTIVITY_KEY)) || [];
+        // ... 其餘函數保留 ...
+
+        // 影子月曆 (與之前相同)
+        let shadowMarks = JSON.parse(localStorage.getItem(SHADOW_KEY)) || {};
+        function saveShadowMarks() { localStorage.setItem(SHADOW_KEY, JSON.stringify(shadowMarks)); }
+
+        // 同步主頁開關 (與之前相同)
+        let syncMain = localStorage.getItem(SYNC_MAIN_KEY) !== 'false';
+        // ...
+
+        // 預約資料
+        let bookings = [];
+
+        // 設定資料 (加入 adminPassword 欄位)
+        let config = {
+            School: ['中學', '小學'],
+            grades: [ { grade: '1', letters: ['A','B','C'] }, { grade: '2', letters: ['A','B','C','D','E','F'] }, { grade: '3', letters: ['A','B','C','D'] } ],
+            limits: { '1A':25,'1B':25,'1C':25,'2A':18,'2B':18,'2C':18,'2D':18,'2E':18,'2F':18,'3A':20,'3B':20,'3C':20,'3D':20 },
+            notice: "• 每位同學只可有一個有效預約。\n• 預約時間前2小時內無法修改或取消。\n• 預約只是分散人流，必須按照店舖人數排隊。",
+            screenshotLabel: "確定已截圖的預約記錄",
+            studentCardLabel: "我已準備好出示學生證核對",
+            ntfyTopic: "hairworld_demo",
+            ntfyEnabled: true,
+            enableCaptcha: true,
+            gradeNames: ['小一', '小二', '小三', '小四', '小五', '小六'],
+            letterNames: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+            adminPassword: "admin123"      // ⭐ 新增：雲端管理員密碼
+        };
+
+        // 全域管理員密碼變數 (將從雲端更新)
+        let adminPassword = config.adminPassword;
+
+        // 其餘全域變數 (與之前相同)
+        let sortField = 'date', sortDirection = 'asc';
+        let studentYear = new Date().getFullYear(), studentMonth = new Date().getMonth();
+        let currentSelectedDate = getTomorrowStr();
+        let adminYear = new Date().getFullYear(), adminMonth = new Date().getMonth();
+        let shadowYear = new Date().getFullYear(), shadowMonth = new Date().getMonth();
+
+        // 輔助函數 (與之前相同)
+        function getTodayStr() { const d = new Date(); return d.toISOString().slice(0,10); }
+        function getTomorrowStr() { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); }
+        function showFeedback(message, isError = true) { /* ... */ }
+        function hideFeedback() { /* ... */ }
+
+        // ==================== API 讀寫 (加入時間戳防快取) ====================
+        async function fetchBookings() {
+            try {
+                const url = `${APPS_SCRIPT_URL}?sheet=bookings&action=read&t=${Date.now()}`; // ⭐ 加入時間戳
+                const response = await fetch(url);
+                const data = await response.json();
+                bookings = Array.isArray(data) ? data.map(b => {
+                    if (b.date && typeof b.date === 'string' && b.date.includes('T')) {
+                        b.date = b.date.split('T')[0];
+                    }
+                    return b;
+                }) : [];
+            } catch (error) {
+                console.error('讀取預約失敗', error);
+                bookings = [];
+            }
+        }
+
+        async function fetchConfig() {
+            try {
+                const url = `${APPS_SCRIPT_URL}?sheet=config&action=readConfig&t=${Date.now()}`; // ⭐ 加入時間戳
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data && !data.error) {
+                    // 原有解析 (略)
+                    if (data.School) { try { config.School = JSON.parse(data.School); } catch { config.School = data.School.split(','); } }
+                    if (data.grades) { try { config.grades = JSON.parse(data.grades); } catch {} }
+                    if (data.limits) { try { config.limits = JSON.parse(data.limits); } catch {} }
+                    if (data.gradeNames) { try { config.gradeNames = JSON.parse(data.gradeNames); } catch { config.gradeNames = data.gradeNames.split(','); } }
+                    if (data.letterNames) { try { config.letterNames = JSON.parse(data.letterNames); } catch { config.letterNames = data.letterNames.split(','); } }
+                    config.notice = data.notice || config.notice;
+                    config.screenshotLabel = data.screenshotLabel || config.screenshotLabel;
+                    config.studentCardLabel = data.studentCardLabel || config.studentCardLabel;
+                    config.ntfyTopic = data.ntfyTopic || config.ntfyTopic;
+                    config.ntfyEnabled = data.ntfyEnabled === 'true' || data.ntfyEnabled === true;
+                    config.enableCaptcha = data.enableCaptcha === 'true' || data.enableCaptcha === true;
+                    // ⭐ 讀取雲端密碼
+                    if (data.adminPassword) {
+                        config.adminPassword = data.adminPassword;
+                        adminPassword = data.adminPassword;
+                        // 可選：同步到 localStorage 作為快取
+                        localStorage.setItem(PASSWORD_KEY, data.adminPassword);
+                    }
+                }
+            } catch (error) { console.error('讀取 config 失敗', error); }
+        }
+
+        async function createBooking(booking) {
+            const params = new URLSearchParams({ sheet: 'bookings', action: 'create', email: booking.email, school: booking.school, class: booking.class, studentId: booking.studentId, date: booking.date, time: booking.time });
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, { method: 'POST', body: params });
+                return await response.json();
+            } catch (error) {
+                console.error('寫入預約失敗', error);
+                return { success: false, error: '網路錯誤' };
+            }
+        }
+
+        async function deleteBooking(date, time, className, studentId) {
+            const params = new URLSearchParams({ sheet: 'bookings', action: 'delete', date, time, class: className, studentId });
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, { method: 'POST', body: params });
+                const result = await response.json();
+                return result.success;
+            } catch (error) {
+                console.error('刪除預約失敗', error);
+                return false;
+            }
+        }
+
+        async function updateConfig() {
+            const params = new URLSearchParams({
+                sheet: 'config', action: 'updateConfig',
+                School: JSON.stringify(config.School),
+                grades: JSON.stringify(config.grades),
+                limits: JSON.stringify(config.limits),
+                gradeNames: JSON.stringify(config.gradeNames),
+                letterNames: JSON.stringify(config.letterNames),
+                notice: config.notice,
+                screenshotLabel: config.screenshotLabel,
+                studentCardLabel: config.studentCardLabel,
+                ntfyTopic: config.ntfyTopic,
+                ntfyEnabled: config.ntfyEnabled ? 'true' : 'false',
+                enableCaptcha: config.enableCaptcha ? 'true' : 'false',
+                adminPassword: config.adminPassword   // ⭐ 將密碼傳給後端
+            });
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, { method: 'POST', body: params });
+                const result = await response.json();
+                return result.success;
+            } catch (error) {
+                console.error('更新 config 失敗', error);
+                return false;
+            }
+        }
+
+        // ==================== 其他功能函數 (與之前完全相同，此處省略但須保留) ====================
+        // 請保留您原有的所有函數：renderTimeSlots, updateLetterSelect, updateStudentIdSelect,
+        // renderStudentCalendar, renderAdminCalendar, showDateDetail, performModify,
+        // 以及所有管理員設定相關函數 (renderSchoolSelect, renderSchoolSettings, renderGradeListSettings,
+        // renderLetterListSettings, renderClassSettings, 等等)
+        // 為節省篇幅，此處省略，實際使用時必須保留完整實作。
+
+        // ==================== 管理員登入 (使用雲端密碼) ====================
+        document.getElementById('viewCalendarBtn')?.addEventListener('click', async function() {
+            const inputPass = document.getElementById('adminPass').value;
+            // ⭐ 直接比對從雲端取得的 adminPassword
+            if (inputPass === adminPassword) {
+                document.getElementById('bookingPage').classList.add('hidden');
+                document.getElementById('calendarPage').classList.remove('hidden');
+                // 重新渲染所有管理員介面 (原有函數)
+                renderClassSettings();
+                renderSchoolSettings();
+                renderGradeListSettings();
+                renderLetterListSettings();
+                document.getElementById('noticeText').value = config.notice;
+                document.getElementById('screenshotText').value = config.screenshotLabel;
+                document.getElementById('studentCardText').value = config.studentCardLabel;
+                document.getElementById('ntfyTopic').value = config.ntfyTopic;
+                document.getElementById('enableNotification').checked = config.ntfyEnabled;
+                document.getElementById('enableCaptcha').checked = config.enableCaptcha;
+                renderAdminCalendar();
+                showDateDetail(null);
+                renderDatabaseTable();
+                renderSuspiciousTable();
+                renderShadowCalendar();
+            } else {
+                alert('密碼錯誤');
+            }
+        });
+
+        // ==================== 修改密碼 (同步至雲端) ====================
+        document.getElementById('changePasswordBtn')?.addEventListener('click', async function() {
+            const newPass = document.getElementById('newPassword').value.trim();
+            const confirmPass = document.getElementById('confirmPassword').value.trim();
+            if (!newPass) { alert('請輸入新密碼'); return; }
+            if (newPass !== confirmPass) { alert('兩次密碼不一致'); return; }
+
+            config.adminPassword = newPass;          // 更新 config 物件
+            const success = await updateConfig();     // 同步至雲端
+            if (success) {
+                adminPassword = newPass;               // 更新全域變數
+                localStorage.setItem(PASSWORD_KEY, newPass); // 可選：更新本地快取
+                alert('密碼已更新並同步至所有裝置！');
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+            } else {
+                alert('密碼更新失敗，請稍後再試');
+            }
+        });
+
+        // ==================== 儲存所有設定 (成功後重新讀取雲端資料) ====================
+        document.getElementById('saveSettingsBtn')?.addEventListener('click', async function() {
+            // 從表單更新 config 物件 (原有程式碼)
+            config.notice = document.getElementById('noticeText').value;
+            config.screenshotLabel = document.getElementById('screenshotText').value;
+            config.studentCardLabel = document.getElementById('studentCardText').value;
+            config.ntfyTopic = document.getElementById('ntfyTopic').value.trim();
+            config.ntfyEnabled = document.getElementById('enableNotification').checked;
+            config.enableCaptcha = document.getElementById('enableCaptcha').checked;
+            // 注意：密碼已在變更密碼按鈕中處理，此處不處理密碼
+
+            const success = await updateConfig();
+            if (success) {
+                // ⭐ 重新從雲端讀取最新設定
+                await fetchConfig();
+                // 重新渲染相關 UI
+                renderLetterListSettings();    // 字母管理列表
+                renderGradeListSettings();     // 年級管理列表
+                renderSchoolSettings();        // 學校管理列表
+                updateCheckboxLabels();
+                updateBookingNotice();
+                renderSchoolSelect();
+                // 重新渲染年級下拉
+                const gradeSelect = document.getElementById('gradeSelect');
+                gradeSelect.innerHTML = '<option value="">請選擇年級</option>';
+                config.gradeNames.forEach(g => {
+                    gradeSelect.innerHTML += `<option value="${g}">${g}</option>`;
+                });
+                toggleCaptcha();
+                alert('設定已儲存並同步至雲端！');
+            } else {
+                alert('儲存失敗，請稍後再試');
+            }
+        });
+
+        // ==================== 提交預約 (已增強防衝突) ====================
+        let submitting = false;
+        document.getElementById('submitBooking')?.addEventListener('click', async function() {
+            if (submitting) return;
+            hideFeedback();
+
+            // 欄位驗證 (與之前相同，略)
+            // ...
+
+            if (config.enableCaptcha) {
+                if (!checkCaptcha()) { showFeedback('驗證碼錯誤，請重新輸入'); refreshCaptcha(); return; }
+            }
+
+            const today = getTodayStr();
+            if (date <= today) { showFeedback('只能預約明天或以後的日期'); return; }
+
+            const className = gradeName + letter;
+
+            // ⭐ 提交前強制刷新最新預約
+            await fetchBookings();
+
+            // 檢查重複預約 (略)
+            // ...
+
+            if (bookings.some(b => b.date === date && b.time === time)) {
+                showFeedback('此時間段已被預約，請重新選擇');
+                renderTimeSlots(date);
+                return;
+            }
+
+            submitting = true;
+            document.getElementById('submitBooking').disabled = true;
+            showFeedback('⏳ 提交中...', false);
+
+            const newBooking = { email, school, class: className, studentId: studentIdInput, date, time };
+            const result = await createBooking(newBooking);
+            if (result.success) {
+                await fetchBookings(); // 再次刷新確保同步
+                addActivity(newBooking);
+                showFeedback('✅ 預約成功！', false);
+                // 顯示學生資訊 (略)
+            } else {
+                if (result.error === '時段已被預約') {
+                    showFeedback('很抱歉，您選擇的時段剛剛被其他人預約了，請重新選擇', true);
+                    await fetchBookings();
+                    renderTimeSlots(date);
+                } else {
+                    showFeedback('❌ 預約失敗，請稍後再試', true);
+                }
+            }
+
+            setTimeout(() => { submitting = false; document.getElementById('submitBooking').disabled = false; }, 1000);
+        });
+
+        // ==================== 初始化 ====================
+        (async function init() {
+            // 將驗證碼容器插入適當位置 (原有邏輯)
+            // ...
+
+            await fetchConfig();
+            await fetchBookings();
+            renderSchoolSelect();
+            const gradeSelect = document.getElementById('gradeSelect');
+            if (gradeSelect) {
+                gradeSelect.innerHTML = '<option value="">請選擇年級</option>';
+                config.gradeNames.forEach(g => gradeSelect.innerHTML += `<option value="${g}">${g</option>`);
+            }
+            const letterSelect = document.getElementById('letterSelect');
+            if (letterSelect) letterSelect.innerHTML = '<option value="">請先選擇年級</option>';
+            updateCheckboxLabels();
+            updateBookingNotice();
+            renderStudentCalendar();
+            renderTimeSlots(currentSelectedDate);
+            toggleCaptcha();
+        })();
+
+        // 注意：此處省略了許多原有函數的實作，您必須將它們補回，否則管理員功能會失效。
+        // 建議您將此修改後的版本與您原有的完整 HTML 合併，保留所有函數定義。
+    })();
+</script>
+</body>
+</html>
