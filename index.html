@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Hair World 義剪預約系統 (本地版)</title>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* 這裡放入原本的所有樣式，為節省空間省略，您複製時請保留原本的完整樣式 */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #FFF5E6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 12px 0 30px 0; margin: 0; }
+        .app-container { width: 100%; max-width: 400px; background-color: white; border-radius: 32px 32px 0 0; box-shadow: 0 8px 30px rgba(247, 147, 49, 0.15); overflow: hidden; padding: 20px 20px 30px 20px; margin: 10px 12px; border: 1px solid #FFD8B2; }
+        .brand { display: flex; align-items: center; margin-bottom: 20px; padding-left: 6px; }
+        .brand h1 { font-size: 28px; font-weight: 700; color: #F25C0A; letter-spacing: 1px; background: white; padding: 0 12px 0 0; }
+        .brand span { background: #F25C0A; color: white; font-size: 14px; padding: 4px 12px; border-radius: 40px; font-weight: 500; margin-left: 4px; }
+        .page { display: block; }
+        .hidden { display: none !important; }
+        .form-group { margin-bottom: 18px; }
+        label { font-size: 15px; font-weight: 600; color: #77450E; display: block; margin-bottom: 5px; margin-left: 4px; }
+        .required::after { content: " *"; color: #F25C0A; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 16px 18px; border: 1.5px solid #FFCDA5; border-radius: 50px; font-size: 16px; background-color: white; transition: 0.2s; outline: none; color: #2D1F0C; height: auto; line-height: 1.2; }
+        select { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F25C0A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 18px center; background-size: 16px; }
+        textarea { border-radius: 28px; min-height: 80px; }
+        .checkbox-wrapper { display: flex; flex-direction: row; align-items: center; background: #FFF2E3; border-radius: 50px; padding: 12px 18px; border: 1px solid #FFCDA5; min-height: 58px; margin-bottom: 12px; }
+        .checkbox-wrapper input[type="checkbox"] { width: 24px; height: 24px; margin-right: 12px; accent-color: #F25C0A; flex-shrink: 0; }
+        .checkbox-wrapper label { margin: 0; font-weight: 500; color: #4F310B; font-size: 16px; }
+        .checkbox-note { font-size: 13px; color: #ff4d4d; margin-left: 42px; margin-top: -8px; margin-bottom: 18px; font-weight: 500; }
+        .btn { background: #F25C0A; color: white; border: none; padding: 16px 18px; border-radius: 60px; font-size: 18px; font-weight: 700; width: 100%; margin-top: 12px; cursor: pointer; box-shadow: 0 6px 0 #B04400; }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #B04400; }
+        .btn-secondary { background: white; color: #F25C0A; border: 2px solid #F25C0A; box-shadow: none; font-weight: 600; margin-top: 8px; }
+        .btn-small { background: #FFE1C7; color: #B04400; border: none; box-shadow: none; font-size: 16px; padding: 12px; font-weight: 600; margin-top: 5px; }
+        .divider { height: 1px; background: #FFD8B2; margin: 26px 0 18px 0; }
+        .admin-row { display: flex; gap: 8px; align-items: center; margin: 20px 0 8px; }
+        .admin-row input { flex: 2; padding: 14px 16px; height: 52px; }
+        .admin-row button { flex: 1; margin-top: 0; padding: 14px 0; font-size: 16px; height: 52px; }
+        .info-card { background: #FFF2E3; border-radius: 28px; padding: 16px; margin: 20px 0 12px; border: 1px solid #FFB985; }
+        .info-card h4 { color: #B04400; margin-bottom: 8px; font-size: 18px; }
+        .info-card p { margin: 5px 0; font-size: 16px; color: #2D1F0C; }
+        .form-feedback { margin: 8px 0 0 0; padding: 10px 16px; border-radius: 40px; background: #FFE6D3; color: #B04400; font-size: 15px; font-weight: 500; display: none; }
+        .form-feedback.error { background: #ffe6e6; color: #c00; border: 1px solid #ff9999; }
+        .form-feedback.success { background: #e6ffe6; color: #0a0; }
+        .social-links { display: flex; justify-content: space-around; align-items: center; margin: 20px 0 10px; padding: 12px; background: #FFF2E3; border-radius: 50px; border: 1px solid #FFB985; }
+        .social-link { display: flex; align-items: center; gap: 8px; color: #F25C0A; text-decoration: none; font-size: 16px; font-weight: 600; padding: 5px 15px; border-radius: 30px; background: white; box-shadow: 0 2px 0 #FFCDA5; }
+        .footer-note { margin-top: 20px; padding: 16px; background: #FFF2E3; border-radius: 28px; border: 1px solid #FFB985; font-size: 14px; color: #77450E; }
+        .student-calendar { margin-top: 0px; margin-bottom: 18px; background: #FFF9F2; border-radius: 28px; padding: 15px; border: 1px solid #FFD8B2; position: relative; }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .cal-header h4 { color: #F25C0A; font-size: 18px; }
+        .cal-nav { display: flex; gap: 10px; }
+        .cal-nav button { background: #FFE6D3; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 20px; color: #F25C0A; font-weight: bold; cursor: pointer; box-shadow: 0 2px 0 #FFB27F; }
+        .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: 600; color: #B45A2A; margin-bottom: 8px; font-size: 14px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .cal-cell { aspect-ratio: 1 / 1; background: white; border-radius: 12px; border: 1px solid #FFD8B2; display: flex; justify-content: center; align-items: center; font-weight: 600; color: #4F310B; position: relative; cursor: pointer; }
+        .cal-cell.holiday { color: #ff0000; border: 2px solid #ff4d4d; background: #ffe6e6; }
+        .cal-cell.selected { background: #F25C0A; color: white !important; border-color: #F25C0A; }
+        .cal-cell.unavailable { background: #f0f0f0; color: #aaa; cursor: not-allowed; }
+        .cal-cell .full-mark { position: absolute; top: 0; right: 2px; color: #ff0000; font-size: 16px; font-weight: bold; }
+        .empty-cell { background: transparent; border: none; cursor: default; }
+        .booking-count-red { position: absolute; bottom: 2px; right: 2px; width: 20px; height: 20px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; }
+        .shadow-mark { position: absolute; bottom: 2px; right: 2px; width: 20px; height: 20px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; }
+        .cal-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; }
+        .help-icon { width: 20px; height: 20px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; font-weight: bold; cursor: help; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 20px; }
+        .calendar-header h2 { color: #F25C0A; font-size: 22px; flex: 1; text-align: center; }
+        .month-nav { display: flex; gap: 10px; }
+        .month-nav button { background: #FFE6D3; border: none; width: 44px; height: 44px; border-radius: 50%; font-size: 24px; color: #F25C0A; font-weight: bold; cursor: pointer; box-shadow: 0 3px 0 #FFB27F; }
+        .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: 600; color: #B45A2A; margin-bottom: 8px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+        .calendar-cell { aspect-ratio: 1 / 1; background: #FFF9F2; border-radius: 16px; border: 1px solid #FFD8B2; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding: 6px; font-weight: 600; color: #4F310B; position: relative; cursor: pointer; }
+        .calendar-cell.holiday { border: 2px solid #ff4d4d; background: #ffe6e6; }
+        .calendar-cell .day-number { font-size: 16px; align-self: flex-start; }
+        .calendar-cell .booking-count-red { position: absolute; bottom: 4px; right: 4px; width: 20px; height: 20px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; }
+        .calendar-cell .full-mark { position: absolute; top: 2px; right: 2px; color: #ff0000; font-size: 18px; font-weight: bold; z-index: 3; text-shadow: 0 0 2px white; }
+        .empty-cell { background: #FFF1E0; border: 1px dashed #FFB27F; }
+        .detail-panel { background: #FFF2E3; border-radius: 28px; padding: 18px 16px; margin: 20px 0 12px; border: 1px solid #FFB985; }
+        .appointment-item { background: white; border-radius: 40px; padding: 12px 16px; margin-bottom: 8px; border-left: 6px solid #F25C0A; font-size: 15px; display: flex; align-items: center; gap: 0 10px; }
+        .delete-btn { background: #ff6b6b; color: white; border: none; border-radius: 30px; padding: 5px 12px; font-size: 13px; margin-left: auto; cursor: pointer; box-shadow: 0 2px 0 #b30000; }
+        .back-btn { background: white; border: 2px solid #F25C0A; color: #F25C0A; font-weight: 600; padding: 14px; border-radius: 40px; width: 100%; font-size: 18px; cursor: pointer; margin-top: 20px; }
+        .note { color: #B45A2A; font-size: 14px; margin: 8px 0 0 8px; }
+        .admin-settings { margin-top: 20px; border: 2px solid #F25C0A; border-radius: 28px; padding: 15px; background: #FFF9F2; }
+        .admin-settings h4 { color: #B04400; margin-bottom: 10px; }
+        .grade-scroll-container { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 10px; margin-bottom: 10px; display: flex; gap: 12px; }
+        .grade-card { display: inline-block; min-width: 160px; background: white; border: 1px solid #FFB985; border-radius: 20px; padding: 10px; white-space: normal; vertical-align: top; }
+        .grade-title { font-weight: 700; color: #F25C0A; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .class-list { display: flex; flex-direction: column; gap: 6px; }
+        .class-item { display: flex; align-items: center; gap: 5px; }
+        .class-item input[type="checkbox"] { width: 18px; height: 18px; margin: 0; }
+        .class-item select { width: 60px; padding: 3px; border-radius: 15px; border: 1px solid #FFB985; font-size: 12px; }
+        .action-buttons { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .school-list, .item-list { margin: 10px 0; }
+        .school-item, .item-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .school-item input, .item-row input { flex: 1; padding: 10px 12px; border-radius: 40px; border: 1px solid #FFB985; }
+        .school-item .remove-school, .item-row .remove-item { background: #ff6b6b; color: white; border: none; border-radius: 30px; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+        .add-school, .add-item { display: flex; gap: 8px; margin-top: 5px; }
+        .suspicious-panel { margin-top: 20px; border: 2px solid #dc3545; border-radius: 28px; padding: 15px; background: #fff8f8; }
+        .suspicious-table { max-height: 200px; overflow-y: auto; border: 1px solid #ffb0b0; border-radius: 20px; background: white; }
+        .suspicious-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .suspicious-table th { background: #ffe0e0; color: #a00; padding: 6px 2px; position: sticky; top: 0; }
+        .database-panel { margin-top: 20px; border: 2px solid #F25C0A; border-radius: 28px; padding: 15px; background: #FFF9F2; }
+        .sortable-table { max-height: 300px; overflow-y: auto; border: 1px solid #FFB985; border-radius: 20px; background: white; }
+        .sortable-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .sortable-table th { background: #FFE6D3; color: #B04400; padding: 8px 4px; position: sticky; top: 0; z-index: 2; cursor: pointer; }
+        .action-btn { background: #F25C0A; color: white; border: none; border-radius: 30px; padding: 3px 8px; font-size: 11px; cursor: pointer; margin: 0 2px; box-shadow: 0 1px 0 #B04400; }
+        .fill-btn { background: #28a745; }
+        .modify-btn { background: #ffc107; color: #333; }
+        .delete-row-btn { background: #ff6b6b; }
+        .password-change { margin-top: 15px; border-top: 2px solid #FFB985; padding-top: 15px; }
+        .shadow-calendar { margin-top: 20px; border: 2px solid #F25C0A; border-radius: 28px; padding: 15px; background: #FFF9F2; }
+        .shadow-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .shadow-header h5 { color: #F25C0A; font-size: 18px; margin: 0; }
+        .shadow-nav { display: flex; gap: 10px; }
+        .shadow-nav button { background: #FFE6D3; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 20px; color: #F25C0A; font-weight: bold; cursor: pointer; box-shadow: 0 2px 0 #FFB27F; }
+        .shadow-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 10px; }
+        .shadow-cell { aspect-ratio: 1 / 1; background: white; border-radius: 12px; border: 1px solid #FFD8B2; display: flex; justify-content: center; align-items: center; font-weight: 600; color: #4F310B; position: relative; cursor: pointer; }
+        .shadow-cell.holiday { border: 2px solid #ff4d4d; background: #ffe6e6; }
+        .shadow-cell .shadow-mark { position: absolute; bottom: 2px; right: 2px; width: 20px; height: 20px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; }
+        .shadow-footer { display: flex; justify-content: flex-end; gap: 10px; align-items: center; }
+        .sync-switch { display: flex; align-items: center; gap: 5px; font-size: 14px; background: #FFE6D3; padding: 5px 12px; border-radius: 30px; }
+        .field-setting-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; background: #FFF9F2; padding: 8px 12px; border-radius: 40px; border: 1px solid #FFCDA5; }
+        .field-setting-row label { margin: 0; font-size: 14px; white-space: nowrap; }
+        .field-setting-row input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: #F25C0A; }
+        .field-setting-row .field-label { font-weight: 600; color: #B04400; min-width: 60px; }
+        .time-slot-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+        .time-slot-item { background: #FFE6D3; border-radius: 30px; padding: 5px 12px; display: flex; align-items: center; gap: 6px; }
+        .time-slot-item button { background: #ff6b6b; border: none; color: white; border-radius: 20px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
+        .add-time-slot { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+        .employee-section { margin-top: 20px; border: 2px solid #28a745; border-radius: 28px; padding: 15px; background: #f0fff0; }
+        .student-history { margin-top: 15px; padding: 10px; background: white; border-radius: 20px; border: 1px solid #28a745; max-height: 200px; overflow-y: auto; }
+        .history-item { padding: 8px; border-bottom: 1px solid #ddd; font-size: 14px; }
+        .history-item.arrived { border-left: 4px solid #28a745; }
+        .history-item.absent { border-left: 4px solid #dc3545; }
+        .history-item.pending { border-left: 4px solid #ffc107; }
+        .unlock-badge { background: #ffc107; color: #333; padding: 2px 8px; border-radius: 20px; font-size: 12px; margin-left: 8px; }
+        .records-panel { margin-top: 20px; border: 2px solid #17a2b8; border-radius: 28px; padding: 15px; background: #e6f7ff; }
+        .records-table { max-height: 200px; overflow-y: auto; border: 1px solid #17a2b8; border-radius: 20px; background: white; margin-bottom: 15px; }
+        .records-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .records-table th { background: #17a2b8; color: white; padding: 6px; position: sticky; top: 0; }
+        .restore-btn { background: #ffc107; color: #333; border: none; border-radius: 20px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
+        .clear-absent-btn { background: #dc3545; color: white; border: none; border-radius: 20px; padding: 5px 10px; font-size: 12px; cursor: pointer; margin-top: 5px; }
+        .employee-login-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+        .total-count { font-weight: bold; color: #17a2b8; margin-left: 10px; font-size: 16px; }
+    </style>
+</head>
+<body>
+<div class="app-container" id="appContainer">
+    <div class="brand"><h1>Hair World</h1><span>義剪預約</span></div>
+
+    <!-- 預約頁面 -->
+    <div id="bookingPage" class="page">
+        <form id="bookingForm">
+            <div class="form-group" id="group-email"><label class="required" id="label-email">學生 Email (選填)</label><input type="email" id="email" placeholder="example@mail.com"></div>
+            <div class="form-group" id="group-school"><label class="required" id="label-school">學校名稱</label><select id="school"><option value="">請選擇學校</option></select></div>
+            <div class="form-group" id="group-grade"><label class="required" id="label-grade">年級</label><select id="gradeSelect"><option value="">請選擇年級</option></select></div>
+            <div class="form-group" id="group-class"><label class="required" id="label-class">班別</label><select id="letterSelect"><option value="">請先選擇年級</option></select></div>
+            <div class="form-group" id="group-studentId"><label class="required" id="label-studentId">學號</label><select id="studentId"><option value="">請先選擇年級與班別</option></select></div>
+            <div class="student-calendar">
+                <div class="cal-title"><span>預約人數</span><div class="help-icon" title="紅色數字為管理員設定的影子標記或當日預約人數">?</div></div>
+                <div class="cal-header"><h4 id="studentCalMonthYear"></h4><div class="cal-nav"><button id="studentPrevMonth">←</button><button id="studentNextMonth">→</button></div></div>
+                <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+                <div id="studentCalGrid" class="cal-grid"></div>
+            </div>
+            <div class="form-group"><label class="required">預約時間</label><select id="timeSlot" required></select><div class="note" id="timeNote"></div></div>
+            <div id="captchaContainer" style="display: none;"><div class="captcha-group"><span id="captchaQuestion"></span><input type="number" id="captchaAnswer" placeholder="輸入答案" min="0"></div></div>
+            <div class="checkbox-wrapper"><input type="checkbox" id="confirmScreenshot" required><label for="confirmScreenshot" id="screenshotLabel">確定已截圖的預約記錄</label></div>
+            <div class="checkbox-wrapper" style="margin-bottom: 4px;"><input type="checkbox" id="confirmStudentCard" required><label for="confirmStudentCard" id="studentCardLabel">我已準備好出示學生證核對</label></div>
+            <div class="checkbox-note">(需要出示學生證核對)</div>
+            <div class="social-links">
+                <a href="#" target="_blank" rel="noopener noreferrer" class="social-link"><i class="fa-brands fa-instagram"></i> Instagram</a>
+                <a href="#" target="_blank" rel="noopener noreferrer" class="social-link"><i class="fa-solid fa-location-dot"></i> 井財街店</a>
+            </div>
+            <button type="button" class="btn" id="submitBooking">提交預約</button>
+            <div id="formFeedback" class="form-feedback"></div>
+            <div id="studentInfoArea" class="info-card" style="display: none;"><h4>📋 我的預約記錄</h4><div id="studentInfoContent"></div></div>
+            <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
+            <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
+        </form>
+        <div class="divider"></div>
+        <div style="margin-top: 12px;">
+            <label>管理員專區</label>
+            <div class="admin-row">
+                <input type="password" id="adminPass" placeholder="管理員密碼" value="admin123">
+                <button class="btn-small" id="viewCalendarBtn">進入</button>
+            </div>
+            <div class="employee-login-row">
+                <input type="password" id="employeePass" placeholder="員工密碼" value="employee123">
+                <button class="btn-small" id="viewEmployeeBtn">員工登入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理員月曆頁面 -->
+    <div id="calendarPage" class="page hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <label class="sync-switch"><span>同步主頁</span><input type="checkbox" id="syncMainCalendar" checked></label>
+            <button class="btn-small" id="backToBookingFromAdmin">返回主頁</button>
+        </div>
+        <div class="calendar-header">
+            <div class="month-nav"><button id="prevMonth">←</button></div>
+            <h2 id="monthYearDisplay"></h2>
+            <div class="month-nav"><button id="nextMonth">→</button></div>
+        </div>
+        <div class="weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+        <div id="dailyDetail" class="detail-panel">
+            <h3 id="selectedDateTitle">點擊日期查看預約</h3>
+            <div id="appointmentList"></div>
+        </div>
+
+        <!-- 已完成記錄 (含總數) -->
+        <div class="records-panel">
+            <h4>✅ 已完成記錄 <span id="completedTotalCount" class="total-count">0</span></h4>
+            <div class="records-table" id="completedRecordsTable"></div>
+            
+            <h4 style="margin-top:15px;">⚠️ 未到達記錄</h4>
+            <div class="records-table" id="absentRecordsTable"></div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn-small" id="clearOldAbsentBtn">清除7天前未到達</button>
+                <span style="font-size:12px; color:#666;">(每日凌晨3點自動清除)</span>
+            </div>
+        </div>
+
+        <div class="suspicious-panel" id="suspiciousPanel">
+            <h4>🚨 可疑活動監控</h4>
+            <div class="suspicious-table" id="suspiciousTable"></div>
+            <div class="clear-suspicious"><button class="btn-small" id="clearSuspicious">清除舊記錄</button></div>
+        </div>
+
+        <div class="shadow-calendar">
+            <div class="shadow-header">
+                <h5 id="shadowMonthYear"></h5>
+                <div class="shadow-nav">
+                    <button id="shadowPrevMonth">←</button>
+                    <button id="shadowNextMonth">→</button>
+                </div>
+            </div>
+            <div class="weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+            <div id="shadowGrid" class="shadow-grid"></div>
+            <div class="shadow-footer"><button class="btn-small" id="clearShadowMonth">清除本月數字</button></div>
+        </div>
+
+        <details class="admin-settings" id="adminSettings" open>
+            <summary style="font-weight:600; color:#F25C0A;">⚙️ 管理員設定</summary>
+            <div style="margin-top:15px;">
+                <h4>👁️ 欄位顯示、必填與可重複設定</h4>
+                <div id="fieldSettingsContainer"></div>
+
+                <h4 style="margin-top:20px;">🔐 員工權限設定</h4>
+                <div style="border:1px solid #28a745; border-radius:28px; padding:12px; margin-bottom:20px;">
+                    <div class="form-group">
+                        <label>員工密碼</label>
+                        <input type="text" id="employeePassword" value="employee123">
+                    </div>
+                    <div class="form-group">
+                        <label>員工修改密碼（輸入此密碼可暫時獲得修改權限）</label>
+                        <input type="text" id="employeeModifyPassword" value="modify123">
+                    </div>
+                    <div style="color:#28a
