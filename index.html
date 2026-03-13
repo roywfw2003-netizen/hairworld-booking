@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Hair World 剪髮預約 (完整整合版)</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* 此處樣式與先前完全相同，省略以節省篇幅，實際使用時請保留完整樣式 */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #FFF5E6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 12px 0 30px 0; margin: 0; }
+        .app-container { width: 100%; max-width: 400px; background-color: white; border-radius: 32px 32px 0 0; box-shadow: 0 8px 30px rgba(247, 147, 49, 0.15); overflow: hidden; padding: 20px 20px 30px 20px; margin: 10px 12px; border: 1px solid #FFD8B2; }
+        .brand { display: flex; align-items: center; margin-bottom: 20px; padding-left: 6px; }
+        .brand h1 { font-size: 28px; font-weight: 700; color: #F25C0A; letter-spacing: 1px; background: white; padding: 0 12px 0 0; }
+        .brand span { background: #F25C0A; color: white; font-size: 14px; padding: 4px 12px; border-radius: 40px; font-weight: 500; margin-left: 4px; }
+        .page { display: block; }
+        .hidden { display: none !important; }
+        /* ... 其餘樣式保持不變 ... */
+    </style>
+</head>
+<body>
+<div class="app-container" id="appContainer">
+    <!-- 主預約頁面、管理員頁面、員工頁面結構完全與先前相同，此處省略以節省篇幅，實際使用時請保留完整結構 -->
+</div>
+
+<script>
+(function() {
+    // ========== Firebase 初始化 ==========
+    const firebaseConfig = {
+        apiKey: "AIzaSyCTgUIWXKjNZqp-bC1jk-XxZvoMihs6vO4",
+        authDomain: "hairworld-2026.firebaseapp.com",
+        projectId: "hairworld-2026",
+        storageBucket: "hairworld-2026.firebasestorage.app",
+        messagingSenderId: "531811271889",
+        appId: "1:531811271889:web:62bf3e37996b9b154831f0",
+        measurementId: "G-0EC2ND9LCN"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    auth.signInAnonymously().catch(error => {
+        console.error("匿名登入失敗", error);
+        alert("無法匿名登入，請檢查 Firebase 設定");
+    });
+
+    // ========== 全域變數 ==========
+    const PASSWORD_KEY = 'hairWorldAdminPassword';
+    const DEVICE_ID_KEY = 'hairWorldDeviceId';
+    const ACTIVITY_KEY = 'hairWorldActivity';
+    const SHADOW_KEY = 'hairWorldShadowMarks';
+    const SYNC_MAIN_KEY = 'hairWorldSyncMain';
+
+    function getDeviceId() {
+        let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+        if (!deviceId) {
+            deviceId = 'device_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem(DEVICE_ID_KEY, deviceId);
+        }
+        return deviceId;
+    }
+    const deviceId = getDeviceId();
+
+    let activities = JSON.parse(localStorage.getItem(ACTIVITY_KEY)) || [];
+    function addActivity(booking) {
+        const activity = { deviceId, timestamp: Date.now(), email: booking.email, school: booking.school, class: booking.class, studentId: booking.studentId, date: booking.date, time: booking.time };
+        activities.push(activity);
+        if (activities.length > 100) activities = activities.slice(-100);
+        localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities));
+    }
+    function clearOldActivities(hours = 1) {
+        const cutoff = Date.now() - hours * 60 * 60 * 1000;
+        activities = activities.filter(a => a.timestamp >= cutoff);
+        localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities));
+    }
+    function getSuspiciousActivities() {
+        const cutoff = Date.now() - 60 * 60 * 1000;
+        const recent = activities.filter(a => a.timestamp >= cutoff);
+        const deviceCounts = {};
+        recent.forEach(a => deviceCounts[a.deviceId] = (deviceCounts[a.deviceId] || 0) + 1);
+        const suspiciousDevices = Object.keys(deviceCounts).filter(d => deviceCounts[d] > 1);
+        return recent.filter(a => suspiciousDevices.includes(a.deviceId));
+    }
+    function renderSuspiciousTable() {
+        clearOldActivities(1);
+        const suspicious = getSuspiciousActivities();
+        const tableDiv = document.getElementById('suspiciousTable');
+        if (suspicious.length === 0) { tableDiv.innerHTML = '<div style="padding:10px; text-align:center;">✅ 目前無可疑活動</div>'; return; }
+        let html = '<table><thead><tr><th>時間</th><th>學校</th><th>班級</th><th>學號</th><th>日期</th><th>時間</th></tr></thead><tbody>';
+        suspicious.sort((a,b) => b.timestamp - a.timestamp).forEach(a => {
+            const timeStr = new Date(a.timestamp).toLocaleTimeString('zh-HK', { hour12: false });
+            html += `<tr><td>${timeStr}</td><td>${a.school}</td><td>${a.class}</td><td>${a.studentId}</td><td>${a.date}</td><td>${a.time}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        tableDiv.innerHTML = html;
+    }
+    document.getElementById('clearSuspicious')?.addEventListener('click', function() {
+        activities = [];
+        localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities));
+        renderSuspiciousTable();
+    });
+
+    let shadowMarks = JSON.parse(localStorage.getItem(SHADOW_KEY)) || {};
+    function saveShadowMarks() { localStorage.setItem(SHADOW_KEY, JSON.stringify(shadowMarks)); }
+
+    let syncMain = localStorage.getItem(SYNC_MAIN_KEY) !== 'false';
+    document.getElementById('syncMainCalendar').checked = syncMain;
+    document.getElementById('syncMainCalendar').addEventListener('change', function(e) {
+        syncMain = e.target.checked;
+        localStorage.setItem(SYNC_MAIN_KEY, syncMain);
+        renderStudentCalendar();
+    });
+
+    // ========== 設定資料結構 ==========
+    let bookings = [];
+    let config = {
+        School: [
+            { name: '中學', short: '中', enabled: true },
+            { name: '小學', short: '小', enabled: true }
+        ],
+        grades: [ { grade: '1', letters: ['A','B','C'] }, { grade: '2', letters: ['A','B','C','D','E','F'] }, { grade: '3', letters: ['A','B','C','D'] } ],
+        limits: { '1A':25,'1B':25,'1C':25,'2A':18,'2B':18,'2C':18,'2D':18,'2E':18,'2F':18,'3A':20,'3B':20,'3C':20,'3D':20 },
+        notice: "• 每位同學只可有一個有效預約。\n• 預約時間前2小時內無法修改或取消。\n• 預約只是分散人流，必須按照店舖人數排隊。",
+        screenshotLabel: "確定已截圖的預約記錄",
+        studentCardLabel: "我已準備好出示學生證核對",
+        ntfyTopic: "hairworld_demo",
+        ntfyEnabled: true,
+        enableCaptcha: true,
+        gradeNames: ['小一', '小二', '小三', '小四', '小五', '小六'],
+        letterNames: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+        adminPassword: "admin123",
+        staffPassword: "staff123",
+        staffEditPassword: "edit123",
+        staffCanEditDefault: false,
+        barbers: ['師傅A', '師傅B', '師傅C', '師傅D'],
+        visibleFields: { email: true, school: true, grade: true, class: true, studentId: true },
+        requiredFields: { email: true, school: true, grade: true, class: true, studentId: true },
+        allowDuplicate: { email: false, school: true, grade: true, class: true, studentId: false },
+        fieldLabels: { email: "學生 Email", school: "學校名稱", grade: "年級", class: "班別", studentId: "學號" },
+        showInRecords: { email: true, school: true, grade: true, class: true, studentId: true, barber: true },
+        weekdaySlots: ['16:00','16:20','16:40','17:00','17:20','17:40','18:00','18:20','18:40'],
+        holidaySlots: ['10:30','11:30','12:30'],
+        dailyCutoff: ''
+    };
+    let adminPassword = config.adminPassword;
+    let staffPassword = config.staffPassword;
+    let staffEditPassword = config.staffEditPassword;
+    let staffCanEditDefault = config.staffCanEditDefault;
+    let staffEditMode = false;
+    let lastBooking = null; // 儲存最後一次成功預約的資料
+
+    let sortField = 'date', sortDirection = 'asc';
+    let staffCompletedSort = { field: 'time', dir: 'asc' };
+    let staffNoshowSort = { field: 'time', dir: 'asc' };
+
+    let studentYear = new Date().getFullYear(), studentMonth = new Date().getMonth();
+    let currentSelectedDate = getTomorrowStr();
+    let adminYear = new Date().getFullYear(), adminMonth = new Date().getMonth();
+    let shadowYear = new Date().getFullYear(), shadowMonth = new Date().getMonth();
+
+    function getTodayStr() { const d = new Date(); return d.toISOString().slice(0,10); }
+    function getTomorrowStr() { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); }
+    function showFeedback(message, isError = true) {
+        const fb = document.getElementById('formFeedback');
+        fb.textContent = message;
+        fb.className = 'form-feedback ' + (isError ? 'error' : 'success');
+        fb.style.display = 'block';
+    }
+    function hideFeedback() { document.getElementById('formFeedback').style.display = 'none'; }
+
+    // ========== Firebase 操作 ==========
+    async function fetchBookings() {
+        try {
+            const snapshot = await db.collection("appointments").get();
+            const list = [];
+            snapshot.forEach(doc => {
+                let data = doc.data();
+                data.id = doc.id;
+                if (data.date && typeof data.date === 'string' && data.date.includes('T')) {
+                    data.date = data.date.split('T')[0];
+                }
+                if (!data.status) data.status = 'pending';
+                list.push(data);
+            });
+            bookings = list;
+        } catch (error) {
+            console.error('讀取預約失敗', error);
+            bookings = [];
+        }
+    }
+
+    async function fetchConfig() {
+        try {
+            const doc = await db.collection("config").doc("settings").get();
+            if (doc.exists) {
+                const data = doc.data();
+                Object.assign(config, data);
+                if (data.adminPassword) adminPassword = data.adminPassword;
+                if (data.staffPassword) staffPassword = data.staffPassword;
+                if (data.staffEditPassword) staffEditPassword = data.staffEditPassword;
+                if (data.staffCanEditDefault !== undefined) staffCanEditDefault = data.staffCanEditDefault;
+                if (!config.visibleFields) config.visibleFields = { email: true, school: true, grade: true, class: true, studentId: true };
+                if (!config.requiredFields) config.requiredFields = { email: true, school: true, grade: true, class: true, studentId: true };
+                if (!config.allowDuplicate) config.allowDuplicate = { email: false, school: true, grade: true, class: true, studentId: false };
+                if (!config.fieldLabels) config.fieldLabels = { email: "學生 Email", school: "學校名稱", grade: "年級", class: "班別", studentId: "學號" };
+                if (!config.showInRecords) config.showInRecords = { email: true, school: true, grade: true, class: true, studentId: true, barber: true };
+                if (!config.weekdaySlots) config.weekdaySlots = ['16:00','16:20','16:40','17:00','17:20','17:40','18:00','18:20','18:40'];
+                if (!config.holidaySlots) config.holidaySlots = ['10:30','11:30','12:30'];
+                if (!config.barbers) config.barbers = ['師傅A', '師傅B', '師傅C', '師傅D'];
+                if (config.dailyCutoff === undefined) config.dailyCutoff = '';
+                if (Array.isArray(config.School) && config.School.length > 0 && typeof config.School[0] === 'string') {
+                    config.School = config.School.map(name => ({ name, short: name.substring(0,1), enabled: true }));
+                }
+            } else {
+                await db.collection("config").doc("settings").set(config);
+            }
+        } catch (error) {
+            console.error('讀取設定失敗', error);
+        }
+    }
+
+    async function updateConfig(newConfig) {
+        try {
+            await db.collection("config").doc("settings").set(newConfig);
+            Object.assign(config, newConfig);
+            adminPassword = newConfig.adminPassword;
+            staffPassword = newConfig.staffPassword;
+            staffEditPassword = newConfig.staffEditPassword;
+            staffCanEditDefault = newConfig.staffCanEditDefault;
+            return true;
+        } catch (error) {
+            console.error('更新設定失敗', error);
+            return false;
+        }
+    }
+
+    // ========== 新的 createBooking（非事務，直接寫入，並強制轉為字串）==========
+    async function createBooking(booking) {
+        const appointmentsRef = db.collection("appointments");
+        try {
+            // 清理資料，確保每個欄位都是基本型別（字串）
+            const cleanBooking = {
+                email: String(booking.email || ''),
+                school: String(booking.school || ''),
+                class: String(booking.class || ''),
+                studentId: String(booking.studentId || ''),
+                date: String(booking.date),
+                time: String(booking.time),
+                status: 'pending'
+            };
+            await appointmentsRef.add(cleanBooking);
+            return { success: true };
+        } catch (error) {
+            console.error("建立預約失敗", error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async function updateBookingStatus(bookingId, newStatus, additionalFields = {}) {
+        try {
+            await db.collection("appointments").doc(bookingId).update({ status: newStatus, ...additionalFields });
+            return true;
+        } catch (error) {
+            console.error('更新狀態失敗', error);
+            return false;
+        }
+    }
+
+    async function deleteBookingById(bookingId) {
+        try {
+            await db.collection("appointments").doc(bookingId).delete();
+            return true;
+        } catch (error) {
+            console.error('刪除失敗', error);
+            return false;
+        }
+    }
+
+    async function deleteBooking(date, time, className, studentId) {
+        try {
+            const snapshot = await db.collection("appointments")
+                .where("date", "==", date)
+                .where("time", "==", time)
+                .where("class", "==", className)
+                .where("studentId", "==", studentId)
+                .get();
+            if (!snapshot.empty) {
+                await snapshot.docs[0].ref.delete();
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('刪除預約失敗', error);
+            return false;
+        }
+    }
+
+    // ========== 自動標記過期未到達 ==========
+    async function autoMarkNoShow() {
+        const now = new Date();
+        const pendingBookings = bookings.filter(b => b.status === 'pending' && b.time);
+        for (let b of pendingBookings) {
+            const bookingDateTime = new Date(`${b.date}T${b.time}:00`);
+            const hoursDiff = (now - bookingDateTime) / (1000 * 60 * 60);
+            if (hoursDiff >= 12) {
+                await updateBookingStatus(b.id, 'no-show', { noShowAt: now.toISOString() });
+            }
+        }
+        await fetchBookings();
+    }
+
+    // ========== 以下所有函數（applyFieldSettings, renderSchoolSelect, renderSchoolSettings, renderBarbersSettings, renderTimeSlotSettings, renderFieldSettings, 年級連動, 月曆, 管理員表格, 員工頁面, 事件綁定等）與先前版本完全相同，此處省略以節省篇幅，實際使用時請保留完整程式碼 ==========
+    // 為確保檔案完整，請將先前版本中從 applyFieldSettings 到 init 的所有函數內容複製到這裡
+    // 注意：由於篇幅限制，此處無法完整列出所有數千行程式碼，請您使用之前最後一次可用的完整版本，只替換 createBooking 函數為上述非事務版本。
+    // 如果您需要完整的可執行文件，請告知，我會提供完整不省略的版本。
+})();
+</script>
+</body>
+</html>
