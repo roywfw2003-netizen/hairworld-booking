@@ -8,31 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-    <!-- 動態載入 Firestore 防護（若上述 script 載入失敗則自動補救） -->
-    <script>
-    (function ensureFirestore() {
-        if (typeof firebase !== 'undefined' && firebase.firestore) {
-            console.log('Firestore SDK 已存在');
-            return;
-        }
-        var script = document.createElement('script');
-        script.src = 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js';
-        script.onload = function() {
-            console.log('Firestore SDK 動態載入成功');
-            if (!firebase.apps.length) {
-                firebase.initializeApp({
-                    apiKey: "AIzaSyCTgUIWXKjNZqp-bC1jk-XxZvoMihs6vO4",
-                    authDomain: "hairworld-2026.firebaseapp.com",
-                    projectId: "hairworld-2026",
-                    storageBucket: "hairworld-2026.firebasestorage.app",
-                    messagingSenderId: "531811271889",
-                    appId: "1:531811271889:web:62bf3e37996b9b154831f0"
-                });
-            }
-        };
-        document.head.appendChild(script);
-    })();
-    </script>
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -206,7 +181,9 @@
             <div class="checkbox-wrapper" style="margin-bottom: 4px;"><input type="checkbox" id="confirmStudentCard"><label for="confirmStudentCard" id="studentCardLabel">我已準備好出示學生證核對</label></div>
             <div class="checkbox-note">(需要出示學生證核對)</div>
             <div class="social-links">
+                <!-- 真實的 Instagram 連結 -->
                 <a href="https://www.instagram.com/hair_world_hk?igsh=MWltN3c0Y2NsYjlydA%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" class="social-link"><i class="fa-brands fa-instagram"></i> Instagram</a>
+                <!-- 真實的 Google 地圖連結 -->
                 <a href="https://maps.app.goo.gl/zFbMRrseW1Eaf5KcA?g_st=ic" target="_blank" rel="noopener noreferrer" class="social-link"><i class="fa-solid fa-location-dot"></i> 井財街店</a>
             </div>
             <button type="button" class="btn" id="submitBooking">提交預約</button>
@@ -309,21 +286,13 @@
                 <label style="display:flex; align-items:center; gap:8px; margin:8px 0;"><input type="checkbox" id="staffCanEditDefault"> 員工預設可編輯 (若不勾選則需密碼解鎖)</label>
                 
                 <div class="password-change"><h4>🔐 修改管理員密碼</h4><input type="password" id="newPassword" placeholder="新密碼"><input type="password" id="confirmPassword" placeholder="確認新密碼"><button class="btn-small" id="changePasswordBtn">變更密碼</button></div>
-                <!-- 注意：儲存設定按鈕已移至最下方 -->
+                <button class="btn-small" id="saveSettingsBtn" style="width:100%; margin-top:15px;">💾 儲存所有設定</button>
             </div>
         </details>
         
         <!-- 所有預約紀錄表格 -->
         <div class="database-panel">
-            <h4>
-                📋 待處理預約 (pending)
-                <span style="font-size:14px; margin-left:10px;">
-                    <label>
-                        <input type="checkbox" id="showAllStatus"> 顯示所有狀態
-                    </label>
-                    <span id="totalBookingsCount" style="margin-left:10px; font-weight:normal;">(總數: 0)</span>
-                </span>
-            </h4>
+            <h4>📋 待處理預約 (pending) <span style="font-size:14px; margin-left:10px;"><label><input type="checkbox" id="showAllStatus"> 顯示所有狀態</label></span></h4>
             <div class="sortable-table" id="pendingTable"></div>
             
             <div class="completed-section">
@@ -337,10 +306,6 @@
                 <button class="btn-small" id="cleanOldNoShow">清除昨日未到達</button>
             </div>
         </div>
-
-        <!-- 儲存所有設定按鈕 (移至最底部) -->
-        <button class="btn-small" id="saveSettingsBtn" style="width:100%; margin:20px 0;">💾 儲存所有設定</button>
-
         <button class="back-btn" id="backToBookingBtn">⟵ 返回預約頁</button>
     </div>
 
@@ -476,7 +441,7 @@
         renderStudentCalendar();
     });
 
-    // ========== 設定資料結構 (包含 dailyCutoff) ==========
+    // ========== 設定資料結構 ==========
     let bookings = [];
     let config = {
         School: [
@@ -505,13 +470,14 @@
         showInRecords: { email: true, school: true, grade: true, class: true, studentId: true, barber: true },
         weekdaySlots: ['16:00','16:20','16:40','17:00','17:20','17:40','18:00','18:20','18:40'],
         holidaySlots: ['10:30','11:30','12:30'],
-        dailyCutoff: ''  // 每日截止時間
+        dailyCutoff: ''
     };
     let adminPassword = config.adminPassword;
     let staffPassword = config.staffPassword;
     let staffEditPassword = config.staffEditPassword;
     let staffCanEditDefault = config.staffCanEditDefault;
     let staffEditMode = false;
+    let lastBooking = null; // 儲存最後一次成功預約的資料
 
     let sortField = 'date', sortDirection = 'asc';
     let staffCompletedSort = { field: 'time', dir: 'asc' };
@@ -692,14 +658,14 @@
         if (schoolSelect) schoolSelect.required = config.visibleFields.school && config.requiredFields.school;
     }
 
-    // ========== 學校選擇渲染 (使用全名) ==========
+    // ========== 學校選擇渲染 (顯示全名，value為簡稱) ==========
     function renderSchoolSelect() {
         const select = document.getElementById('school');
         select.innerHTML = '<option value="">請選擇學校</option>';
         (config.School || []).forEach(school => {
             if (school.enabled) {
                 const option = document.createElement('option');
-                option.value = school.name;
+                option.value = school.short; // 儲存簡稱
                 option.textContent = school.name; // 顯示全名
                 select.appendChild(option);
             }
@@ -732,6 +698,7 @@
             input.addEventListener('change', function() {
                 const idx = this.dataset.index;
                 config.School[idx].short = this.value;
+                renderSchoolSelect(); // 簡稱變動也要重新渲染下拉
             });
         });
         document.querySelectorAll('.school-enabled').forEach(chk => {
@@ -993,7 +960,7 @@
     document.getElementById('gradeSelect').addEventListener('change', updateLetterSelect);
     document.getElementById('letterSelect').addEventListener('change', updateStudentIdSelect);
 
-    // ========== 月曆與時段 (包含 dailyCutoff 判斷) ==========
+    // ========== 月曆與時段 ==========
     function renderStudentCalendar() {
         const year = studentYear, month = studentMonth;
         const firstDay = new Date(year, month, 1).getDay();
@@ -1005,7 +972,6 @@
             const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             let unavailable = dateStr <= getTodayStr();
             if (!unavailable && config.dailyCutoff) {
-                // 如果是明天，檢查是否超過今日截止時間
                 const tomorrow = new Date(dateStr + 'T00:00:00');
                 const now = new Date();
                 if (tomorrow.toDateString() === new Date(now.getTime() + 86400000).toDateString()) {
@@ -1132,8 +1098,11 @@
             title.innerText = `${dateStr} 待處理預約 (${dayBookings.length}人)`;
             let html = '';
             dayBookings.forEach(b => {
+                // 顯示學校簡稱（若 b.school 是簡稱，直接顯示；若為全名，則轉換）
+                const schoolObj = config.School.find(s => s.name === b.school || s.short === b.school);
+                const schoolDisplay = schoolObj ? schoolObj.short : b.school;
                 html += `<div class="appointment-item" data-id="${b.id}" data-date="${b.date}" data-time="${b.time}" data-class="${b.class}" data-student="${b.studentId}" data-school="${b.school}">
-                    <span>⏰${b.time} 學校 ${b.school} 班級 ${b.class} 學號 ${b.studentId}</span>
+                    <span>⏰${b.time} 學校 ${schoolDisplay} 班級 ${b.class} 學號 ${b.studentId}</span>
                     <div class="actions">
                         <button class="complete-btn" data-id="${b.id}">完成</button>
                         <button class="delete-btn" data-id="${b.id}">刪除</button>
@@ -1142,6 +1111,12 @@
             });
             listDiv.innerHTML = html;
         }
+    }
+
+    // 輔助函數：取得學校簡稱，若輸入為全名則轉換，若為簡稱則直接返回
+    function getSchoolShort(input) {
+        const schoolObj = config.School.find(s => s.name === input || s.short === input);
+        return schoolObj ? schoolObj.short : input;
     }
 
     // ========== 管理員表格渲染 ==========
@@ -1160,7 +1135,6 @@
 
         document.getElementById('completedTotal').innerText = completedList.length;
         document.getElementById('noshowTotal').innerText = noshowList.length;
-        document.getElementById('totalBookingsCount').innerText = `(總數: ${bookings.length})`;
 
         document.getElementById('pendingTable').innerHTML = renderTable(pendingList, true, false, false);
         document.getElementById('completedTable').innerHTML = renderTable(completedList, false, true, false);
@@ -1185,7 +1159,10 @@
         bookingsArray.forEach(b => {
             html += '<tr>';
             if (config.showInRecords.email) html += `<td>${b.email || ''}</td>`;
-            if (config.showInRecords.school) html += `<td>${b.school || ''}</td>`;
+            if (config.showInRecords.school) {
+                const schoolShort = getSchoolShort(b.school);
+                html += `<td>${schoolShort}</td>`;
+            }
             if (config.showInRecords.grade) {
                 const gradeNum = b.class ? b.class.charAt(0) : '';
                 const gradeName = config.gradeNames[parseInt(gradeNum)-1] || gradeNum;
@@ -1221,8 +1198,8 @@
             config.School.forEach(s => {
                 if (s.enabled) {
                     const option = document.createElement('option');
-                    option.value = s.name;
-                    option.textContent = s.name;
+                    option.value = s.short; // 儲存簡稱
+                    option.textContent = s.name; // 顯示全名
                     staffSchool.appendChild(option);
                 }
             });
@@ -1289,8 +1266,9 @@
                 const barberRadios = config.barbers.map((barber, idx) => 
                     `<label style="margin-right:5px;"><input type="radio" name="barber_${b.id}" value="${barber}"> ${barber}</label>`
                 ).join('');
+                const schoolShort = getSchoolShort(b.school);
                 div.innerHTML = `
-                    <div class="record-info">⏰ ${b.time}  ${b.school} ${b.class} 學號${b.studentId} ${b.email ? '<br>📧 '+b.email : ''}</div>
+                    <div class="record-info">⏰ ${b.time}  ${schoolShort} ${b.class} 學號${b.studentId} ${b.email ? '<br>📧 '+b.email : ''}</div>
                     <div class="barber-selector">${barberRadios}</div>
                     <div class="record-actions">
                         <button class="btn-small btn-success mark-complete" data-id="${b.id}">✅已到達</button>
@@ -1333,7 +1311,10 @@
         sorted.forEach(b => {
             let info = '';
             if (config.showInRecords.time !== false) info += ` ${b.time || ''}`;
-            if (config.showInRecords.school) info += ` ${b.school || ''}`;
+            if (config.showInRecords.school) {
+                const schoolShort = getSchoolShort(b.school);
+                info += ` ${schoolShort}`;
+            }
             if (config.showInRecords.grade) {
                 const gradeNum = b.class ? b.class.charAt(0) : '';
                 const gradeName = config.gradeNames[parseInt(gradeNum)-1] || gradeNum;
@@ -1488,7 +1469,7 @@
     });
 
     document.getElementById('submitStaffWalkin')?.addEventListener('click', async function() {
-        const school = document.getElementById('staffSchool').value;
+        const school = document.getElementById('staffSchool').value; // 簡稱
         const gradeName = document.getElementById('staffGradeSelect').value;
         const letter = document.getElementById('staffLetterSelect').value;
         const studentId = document.getElementById('staffStudentId').value;
@@ -1508,7 +1489,7 @@
 
         const newBooking = {
             email: email || '',
-            school,
+            school, // 儲存簡稱
             class: className,
             studentId,
             date: today,
@@ -1871,51 +1852,20 @@
         return (bt - now) / (1000*60*60) <= 2;
     }
 
-    // 修改預約：根據非空欄位查找原預約
     async function performModify(email, school, className, studentId) {
         hideFeedback();
-
-        const conditions = [];
-        if (email) conditions.push(b => b.email === email);
-        if (school) conditions.push(b => b.school === school);
-        if (className) conditions.push(b => b.class === className);
-        if (studentId) conditions.push(b => b.studentId == studentId);
-
-        if (conditions.length === 0) {
-            showFeedback('請至少填寫一個欄位以定位原預約');
-            return;
-        }
-
-        const found = bookings.find(b => 
-            b.status === 'pending' && conditions.every(cond => cond(b))
-        );
-
-        if (!found) {
-            showFeedback('找不到匹配的待處理預約記錄 (請確認輸入資訊與原預約一致)');
-            return;
-        }
-
-        const canceled = found;
+        if (!email || !school || !className || !studentId) { showFeedback('請填寫 Email、學校、班級和學號以修改預約'); return; }
+        const index = bookings.findIndex(b => b.school === school && b.class === className && b.studentId == studentId && b.email === email && b.status === 'pending');
+        if (index === -1) { showFeedback('找不到完全匹配的待處理預約記錄 (Email、學校、班級、學號須相符)'); return; }
+        const canceled = bookings[index];
         const today = getTodayStr();
-        if (canceled.date >= today && isWithinTwoHours(canceled)) {
-            showFeedback('⚠️ 預約時間前2小時內無法修改或取消');
-            return;
-        }
-        if (canceled.date < today) {
-            showFeedback('過期預約無法修改');
-            return;
-        }
+        if (canceled.date >= today && isWithinTwoHours(canceled)) { showFeedback('⚠️ 預約時間前2小時內無法修改或取消'); return; }
+        if (canceled.date < today) { showFeedback('過期預約無法修改'); return; }
         if (canceled.date === today && !confirm('您今天的預約即將取消，重新預約不能再選擇今天，需提前一日預約。確定要繼續嗎？')) return;
-
         const success = await deleteBookingById(canceled.id);
-        if (!success) {
-            showFeedback('刪除失敗，請稍後再試');
-            return;
-        }
-
-        bookings = bookings.filter(b => b.id !== canceled.id);
+        if (!success) { showFeedback('刪除失敗，請稍後再試'); return; }
+        bookings.splice(index, 1);
         await fetchBookings();
-
         currentSelectedDate = getTomorrowStr();
         renderTimeSlots(currentSelectedDate);
         const tomorrowDate = new Date(currentSelectedDate + 'T12:00:00');
@@ -1925,7 +1875,6 @@
         renderAdminCalendar();
         showDateDetail(null);
         renderAdminTables();
-
         const area = document.getElementById('studentInfoArea');
         const content = document.getElementById('studentInfoContent');
         let extraMsg = (canceled.date === today) ? '<p class="cancel-note">⚠️ 重新預約不能再選擇今天，需提前一日預約</p>' : '';
@@ -1935,13 +1884,50 @@
     }
 
     document.getElementById('modifyBookingBtn').addEventListener('click', function() {
-        const email = document.getElementById('email').value.trim();
-        const school = document.getElementById('school').value;
-        const gradeName = document.getElementById('gradeSelect').value;
-        const letter = document.getElementById('letterSelect').value;
-        const studentId = document.getElementById('studentId').value.trim();
-        const className = gradeName + letter;
-        performModify(email, school, className, studentId);
+        if (!lastBooking) {
+            alert('請先進行一次預約後才能修改');
+            return;
+        }
+        // 自動填入原預約資料
+        document.getElementById('email').value = lastBooking.email || '';
+        // 設定學校選項 (value 是簡稱，直接設定 select.value)
+        const schoolSelect = document.getElementById('school');
+        schoolSelect.value = lastBooking.school; // 直接設定 value 為簡稱
+        if (!schoolSelect.value) {
+            alert('原學校已不存在或停用，無法修改');
+            return;
+        }
+        // 設定年級
+        const classStr = lastBooking.class; // 例如 "1A" 或 "小一A" 取決於儲存格式，這裡假設儲存的是 "1A"
+        const gradeNum = classStr.charAt(0);
+        const letter = classStr.slice(1);
+        // 將數字年級轉換為年級名稱
+        const gradeName = config.gradeNames[parseInt(gradeNum)-1] || gradeNum;
+        const gradeSelect = document.getElementById('gradeSelect');
+        for (let i = 0; i < gradeSelect.options.length; i++) {
+            if (gradeSelect.options[i].value === gradeName) {
+                gradeSelect.selectedIndex = i;
+                break;
+            }
+        }
+        // 觸發年級變更事件，更新班別下拉選單
+        gradeSelect.dispatchEvent(new Event('change'));
+        // 稍等一下讓班別選單更新
+        setTimeout(() => {
+            const letterSelect = document.getElementById('letterSelect');
+            for (let i = 0; i < letterSelect.options.length; i++) {
+                if (letterSelect.options[i].value === letter) {
+                    letterSelect.selectedIndex = i;
+                    break;
+                }
+            }
+            letterSelect.dispatchEvent(new Event('change'));
+        }, 100);
+        // 設定學號
+        setTimeout(() => {
+            const studentSelect = document.getElementById('studentId');
+            studentSelect.value = lastBooking.studentId;
+        }, 200);
     });
 
     let submitting = false;
@@ -1950,7 +1936,7 @@
         hideFeedback();
 
         const email = document.getElementById('email').value.trim();
-        const school = document.getElementById('school').value;
+        const school = document.getElementById('school').value; // 簡稱
         const gradeName = document.getElementById('gradeSelect').value;
         const letter = document.getElementById('letterSelect').value;
         const studentIdInput = document.getElementById('studentId').value.trim();
@@ -2059,6 +2045,7 @@
         if (result.success) {
             await fetchBookings();
             addActivity(newBooking);
+            lastBooking = newBooking; // 儲存最後一次成功預約
             showFeedback('✅ 預約成功！', false);
             const area = document.getElementById('studentInfoArea');
             const content = document.getElementById('studentInfoContent');
