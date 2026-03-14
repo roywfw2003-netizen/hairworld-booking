@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 剪髮預約 (完整整合版+高併發安全)</title>
+    <title>Hair World 剪髮預約 (完整整合版+高併發安全+v2)</title>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -215,8 +215,8 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <!-- 新增：版本標記 -->
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 1</div>
+        <!-- 新增：版本標記 v2 -->
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 2</div>
         <div class="divider"></div>
         <!-- 管理員及員工入口 -->
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
@@ -427,7 +427,7 @@
     }
     const deviceId = getDeviceId();
 
-    // ========== 【新增】請求佇列 (防止高併發崩潰) ==========
+    // ========== 請求佇列 (防止高併發崩潰) ==========
     const requestQueue = [];
     let isProcessing = false;
 
@@ -457,7 +457,7 @@
         });
     }
 
-    // ========== 【新增】可用時段快取 (減少 Firestore 讀取) ==========
+    // ========== 可用時段快取 (減少 Firestore 讀取) ==========
     const availabilityCache = new Map();
     const CACHE_TTL = 5000; // 5秒快取
 
@@ -648,7 +648,7 @@
         }
     }
 
-    // ========== 【核心修改】使用事務建立預約，徹底解決超賣 ==========
+    // ========== 【核心】使用事務建立預約，徹底解決超賣 ==========
     async function createBooking(booking) {
         // 使用 enqueueRequest 讓請求排隊，避免瞬間過載
         return enqueueRequest(async () => {
@@ -708,9 +708,47 @@
         }
     }
 
+    // ========== 【新增】智能釋放鎖 - 當某個時間段完全沒有人時才釋放 ==========
+    async function smartReleaseLock(date, time) {
+        try {
+            // 檢查是否還有其他 pending 狀態的預約在這個時間段
+            const snapshot = await db.collection("appointments")
+                .where("date", "==", date)
+                .where("time", "==", time)
+                .where("status", "==", "pending")
+                .get();
+            
+            // 如果完全沒有其他預約了，才釋放鎖
+            if (snapshot.empty) {
+                const slotId = `${date}_${time}`;
+                const slotRef = db.collection("timeSlots").doc(slotId);
+                await slotRef.delete(); // 刪除鎖，讓其他人可以預約
+                console.log(`🔓 鎖已釋放：${date} ${time}`);
+                
+                // 清除快取，讓日曆更新
+                availabilityCache.delete(date);
+            } else {
+                console.log(`🔒 鎖保留：${date} ${time} 還有 ${snapshot.size} 個預約`);
+            }
+        } catch (error) {
+            console.error("釋放鎖失敗", error);
+        }
+    }
+
+    // ========== 【修改】刪除預約時智能釋放鎖 ==========
     async function deleteBookingById(bookingId) {
         try {
+            // 先獲取預約資訊，以便知道是哪個時間段
+            const booking = bookings.find(b => b.id === bookingId);
+            
+            // 刪除預約
             await db.collection("appointments").doc(bookingId).delete();
+            
+            // 【新增】智能釋放鎖
+            if (booking) {
+                await smartReleaseLock(booking.date, booking.time);
+            }
+            
             return true;
         } catch (error) {
             console.error('刪除失敗', error);
@@ -727,7 +765,10 @@
                 .where("studentId", "==", studentId)
                 .get();
             if (!snapshot.empty) {
+                const booking = snapshot.docs[0].data();
                 await snapshot.docs[0].ref.delete();
+                // 【新增】智能釋放鎖
+                await smartReleaseLock(date, time);
                 return true;
             }
             return false;
@@ -1075,7 +1116,6 @@
     document.getElementById('letterSelect').addEventListener('change', updateStudentIdSelect);
 
     // ========== 月曆與時段 (包含 dailyCutoff 判斷) ==========
-    // 將原 getAvailableTimeSlots 重命名，以便使用快取版本
     function getAvailableTimeSlotsFromDB(dateStr) {
         const baseSlots = getBaseTimeSlots(dateStr);
         const bookedTimes = bookings.filter(b => b.date === dateStr && b.status === 'pending').map(b => b.time);
@@ -1084,7 +1124,7 @@
         return remaining.filter(t => !blocked.includes(t));
     }
 
-    // 【修改】使用快取的版本
+    // 使用快取的版本
     function getAvailableTimeSlots(dateStr) {
         const cached = getCachedAvailability(dateStr);
         if (cached) return cached;
