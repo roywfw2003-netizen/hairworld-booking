@@ -598,21 +598,39 @@
         }
     }
 
+    // ========== 修改後的 createBooking（使用事務，只檢查時段）==========
     async function createBooking(booking) {
+        const appointmentsRef = db.collection("appointments");
         try {
-            const snapshot = await db.collection("appointments")
-                .where("date", "==", booking.date)
-                .where("time", "==", booking.time)
-                .where("status", "==", "pending")
-                .get();
-            if (!snapshot.empty) {
-                return { success: false, error: '時段已被預約' };
-            }
-            if (!booking.status) booking.status = 'pending';
-            await db.collection("appointments").add(booking);
+            // 清理資料，確保每個欄位都是基本型別（字串）
+            const cleanBooking = {
+                email: String(booking.email || ''),
+                school: String(booking.school || ''),
+                class: String(booking.class || ''),
+                studentId: String(booking.studentId || ''),
+                date: String(booking.date),
+                time: String(booking.time),
+                status: 'pending'
+            };
+
+            await db.runTransaction(async (transaction) => {
+                // 只檢查該時段是否已被佔用
+                const timeSlotQuery = appointmentsRef
+                    .where("date", "==", cleanBooking.date)
+                    .where("time", "==", cleanBooking.time)
+                    .where("status", "==", "pending");
+                const timeSlotSnapshot = await transaction.get(timeSlotQuery);
+                if (!timeSlotSnapshot.empty) {
+                    throw new Error("時段已被預約");
+                }
+
+                // 新增預約
+                const newDocRef = appointmentsRef.doc(); // 自動生成 ID
+                transaction.set(newDocRef, cleanBooking);
+            });
             return { success: true };
         } catch (error) {
-            console.error('建立預約失敗', error);
+            console.error("建立預約失敗", error);
             return { success: false, error: error.message };
         }
     }
