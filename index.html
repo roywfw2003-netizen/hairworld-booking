@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 剪髮預約 (完整整合版+高併發安全+v4)</title>
+    <title>Hair World 剪髮預約 (完整整合版+高併發安全+v5)</title>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -200,10 +200,10 @@
             <div class="form-group"><label class="required">預約時間</label><select id="timeSlot" required></select><div class="note" id="timeNote"></div></div>
             <div id="captchaContainer" style="display: none;"><div class="captcha-group"><span id="captchaQuestion"></span><input type="number" id="captchaAnswer" placeholder="輸入答案" min="0"></div></div>
             
-            <!-- 新增：預約提示框 v4 -->
+            <!-- 預約提示框 v5 -->
             <div style="background: #FFF2E3; border-radius: 20px; padding: 10px; margin: 10px 0; font-size: 14px; color: #B04400; border: 1px solid #FFB985;">
                 <i class="fa-solid fa-circle-info"></i> 
-                <strong>預約小提示：</strong> 若遇到「時段已被預約」表示剛剛被別人搶先了；若遇到「系統繁忙」請稍後再試，系統會自動保護您的資料。
+                <strong>預約小提示：</strong> 若遇到「時段已被預約」表示剛剛被別人搶先了；若遇到「系統繁忙」表示同時太多人預約，請稍後再試或選擇非高峰時段。
             </div>
 
             <div class="checkbox-wrapper"><input type="checkbox" id="confirmScreenshot"><label for="confirmScreenshot" id="screenshotLabel">確定已截圖的預約記錄</label></div>
@@ -219,8 +219,8 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <!-- 版本標記 v4 -->
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 4</div>
+        <!-- 版本標記 v5 -->
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 5</div>
         <div class="divider"></div>
         <!-- 管理員及員工入口 -->
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
@@ -431,36 +431,6 @@
     }
     const deviceId = getDeviceId();
 
-    // ========== 請求佇列 (防止高併發崩潰) ==========
-    const requestQueue = [];
-    let isProcessing = false;
-
-    async function processQueue() {
-        if (isProcessing || requestQueue.length === 0) return;
-        isProcessing = true;
-        
-        while (requestQueue.length > 0) {
-            const { fn, resolve, reject } = requestQueue.shift();
-            try {
-                const result = await fn();
-                resolve(result);
-            } catch (error) {
-                reject(error);
-            }
-            // 每秒最多處理 3 個請求，避免 Firestore 過載
-            await new Promise(r => setTimeout(r, 300));
-        }
-        
-        isProcessing = false;
-    }
-
-    function enqueueRequest(fn) {
-        return new Promise((resolve, reject) => {
-            requestQueue.push({ fn, resolve, reject });
-            processQueue();
-        });
-    }
-
     // ========== 可用時段快取 (減少 Firestore 讀取) ==========
     const availabilityCache = new Map();
     const CACHE_TTL = 5000; // 5秒快取
@@ -652,79 +622,92 @@
         }
     }
 
-    // ========== 【核心 v4】使用事務建立預約 + 學生唯一性鎖 + 友善錯誤訊息 ==========
-    async function createBooking(booking) {
-        return enqueueRequest(async () => {
-            try {
-                const slotId = `${booking.date}_${booking.time}`;
-                const slotRef = db.collection("timeSlots").doc(slotId);
-                
-                const studentId = `${booking.school}_${booking.class}_${booking.studentId}`;
-                const studentLockRef = db.collection("studentLocks").doc(studentId);
-                
-                const result = await db.runTransaction(async (transaction) => {
-                    // 1. 檢查時間段是否已被預約
-                    const slotDoc = await transaction.get(slotRef);
-                    if (slotDoc.exists && slotDoc.data().booked === true) {
-                        return { success: false, error: '時段已被預約' };
-                    }
-                    
-                    // 2. 檢查學生是否已經有預約
-                    const existingSnapshot = await transaction.get(
-                        db.collection("appointments")
-                            .where("school", "==", booking.school)
-                            .where("class", "==", booking.class)
-                            .where("studentId", "==", booking.studentId)
-                            .where("status", "==", "pending")
-                    );
-                    
-                    if (!existingSnapshot.empty) {
-                        return { success: false, error: '您已經有一個有效預約' };
-                    }
-                    
-                    // 3. 使用學生鎖確保唯一性
-                    const studentLockDoc = await transaction.get(studentLockRef);
-                    if (studentLockDoc.exists) {
-                        return { success: false, error: '您已經有一個有效預約' };
-                    }
-                    
-                    // 4. 建立學生鎖
-                    transaction.set(studentLockRef, {
-                        school: booking.school,
-                        class: booking.class,
-                        studentId: booking.studentId,
-                        createdAt: new Date().toISOString()
-                    });
-                    
-                    // 5. 標記時間段為已預約
-                    transaction.set(slotRef, {
-                        booked: true,
-                        date: booking.date,
-                        time: booking.time,
-                        bookedAt: new Date().toISOString()
-                    });
-                    
-                    // 6. 建立預約記錄
-                    const bookingRef = db.collection("appointments").doc();
-                    transaction.set(bookingRef, {
-                        ...booking,
-                        status: 'pending',
-                        createdAt: new Date().toISOString()
-                    });
-                    
-                    return { success: true, bookingId: bookingRef.id };
-                });
-                
-                if (result.success) {
-                    availabilityCache.delete(booking.date);
+    // ========== 【核心 v5】使用事務建立預約 + 自動重試 + 友善錯誤提示 ==========
+    async function createBooking(booking, retryCount = 0) {
+        const MAX_RETRIES = 3;
+        
+        try {
+            const slotId = `${booking.date}_${booking.time}`;
+            const slotRef = db.collection("timeSlots").doc(slotId);
+            
+            const studentId = `${booking.school}_${booking.class}_${booking.studentId}`;
+            const studentLockRef = db.collection("studentLocks").doc(studentId);
+            
+            const result = await db.runTransaction(async (transaction) => {
+                // 1. 檢查時間段是否已被預約
+                const slotDoc = await transaction.get(slotRef);
+                if (slotDoc.exists && slotDoc.data().booked === true) {
+                    return { success: false, error: '時段已被預約' };
                 }
                 
-                return result;
-            } catch (error) {
-                console.error('交易失敗', error);
-                return { success: false, error: '系統繁忙，請稍後再試' };
+                // 2. 檢查學生是否已經有預約
+                const existingSnapshot = await transaction.get(
+                    db.collection("appointments")
+                        .where("school", "==", booking.school)
+                        .where("class", "==", booking.class)
+                        .where("studentId", "==", booking.studentId)
+                        .where("status", "==", "pending")
+                );
+                
+                if (!existingSnapshot.empty) {
+                    return { success: false, error: '您已經有一個有效預約' };
+                }
+                
+                // 3. 使用學生鎖確保唯一性
+                const studentLockDoc = await transaction.get(studentLockRef);
+                if (studentLockDoc.exists) {
+                    return { success: false, error: '您已經有一個有效預約' };
+                }
+                
+                // 4. 建立學生鎖
+                transaction.set(studentLockRef, {
+                    school: booking.school,
+                    class: booking.class,
+                    studentId: booking.studentId,
+                    createdAt: new Date().toISOString()
+                });
+                
+                // 5. 標記時間段為已預約
+                transaction.set(slotRef, {
+                    booked: true,
+                    date: booking.date,
+                    time: booking.time,
+                    bookedAt: new Date().toISOString()
+                });
+                
+                // 6. 建立預約記錄
+                const bookingRef = db.collection("appointments").doc();
+                transaction.set(bookingRef, {
+                    ...booking,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                });
+                
+                return { success: true, bookingId: bookingRef.id };
+            });
+            
+            if (result.success) {
+                availabilityCache.delete(booking.date);
             }
-        });
+            
+            return result;
+            
+        } catch (error) {
+            console.error('交易失敗', error);
+            
+            // 如果是可重試的錯誤（如事務衝突），且尚未超過最大重試次數
+            if (error.code === 'aborted' || error.message.includes('transaction')) {
+                if (retryCount < MAX_RETRIES) {
+                    // 等待一小段時間後重試（指數後退）
+                    const delay = Math.pow(2, retryCount) * 100; // 100ms, 200ms, 400ms
+                    await new Promise(r => setTimeout(r, delay));
+                    return createBooking(booking, retryCount + 1);
+                }
+            }
+            
+            // 重試次數用盡或其他錯誤
+            return { success: false, error: '系統繁忙，請稍後再試。若持續發生，可能是同時太多人預約，建議選擇其他時段或稍後再試。' };
+        }
     }
 
     async function updateBookingStatus(bookingId, newStatus, additionalFields = {}) {
@@ -2220,8 +2203,8 @@
                 renderTimeSlots(date);
             } else if (result.error === '您已經有一個有效預約') {
                 showFeedback('📌 您已經有一個有效預約，無法重複預約。如要更改，請使用「修改我的預約」功能', true);
-            } else if (result.error === '系統繁忙，請稍後再試') {
-                showFeedback('⏳ 系統目前忙碌（可能多人同時預約），請等待 3-5 秒後再試一次', true);
+            } else if (result.error.includes('系統繁忙')) {
+                showFeedback('⏳ 系統目前忙碌（可能同時太多人預約），請稍後再試，或選擇非高峰時段。', true);
             } else {
                 showFeedback('❌ 預約失敗，原因：' + (result.error || '未知錯誤') + '。請稍後再試', true);
             }
