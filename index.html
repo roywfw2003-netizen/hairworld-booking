@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 剪髮預約 (完整整合版+高併發安全+v3)</title>
+    <title>Hair World 剪髮預約 (完整整合版+高併發安全+v4)</title>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -199,6 +199,13 @@
             </div>
             <div class="form-group"><label class="required">預約時間</label><select id="timeSlot" required></select><div class="note" id="timeNote"></div></div>
             <div id="captchaContainer" style="display: none;"><div class="captcha-group"><span id="captchaQuestion"></span><input type="number" id="captchaAnswer" placeholder="輸入答案" min="0"></div></div>
+            
+            <!-- 新增：預約提示框 v4 -->
+            <div style="background: #FFF2E3; border-radius: 20px; padding: 10px; margin: 10px 0; font-size: 14px; color: #B04400; border: 1px solid #FFB985;">
+                <i class="fa-solid fa-circle-info"></i> 
+                <strong>預約小提示：</strong> 若遇到「時段已被預約」表示剛剛被別人搶先了；若遇到「系統繁忙」請稍後再試，系統會自動保護您的資料。
+            </div>
+
             <div class="checkbox-wrapper"><input type="checkbox" id="confirmScreenshot"><label for="confirmScreenshot" id="screenshotLabel">確定已截圖的預約記錄</label></div>
             <div class="checkbox-wrapper" style="margin-bottom: 4px;"><input type="checkbox" id="confirmStudentCard"><label for="confirmStudentCard" id="studentCardLabel">我已準備好出示學生證核對</label></div>
             <div class="checkbox-note">(需要出示學生證核對)</div>
@@ -212,8 +219,8 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <!-- 新增：版本標記 v3 -->
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 3</div>
+        <!-- 版本標記 v4 -->
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 4</div>
         <div class="divider"></div>
         <!-- 管理員及員工入口 -->
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
@@ -645,21 +652,16 @@
         }
     }
 
-    // ========== 【核心 v3】使用事務建立預約 + 學生唯一性鎖 ==========
+    // ========== 【核心 v4】使用事務建立預約 + 學生唯一性鎖 + 友善錯誤訊息 ==========
     async function createBooking(booking) {
-        // 使用 enqueueRequest 讓請求排隊
         return enqueueRequest(async () => {
             try {
-                // 時間段鎖 ID
                 const slotId = `${booking.date}_${booking.time}`;
                 const slotRef = db.collection("timeSlots").doc(slotId);
                 
-                // 學生唯一性鎖 ID (學校+班級+學號)
-                // 例如: "中學_1A_1"
                 const studentId = `${booking.school}_${booking.class}_${booking.studentId}`;
                 const studentLockRef = db.collection("studentLocks").doc(studentId);
                 
-                // 使用 Firestore 事務確保原子性
                 const result = await db.runTransaction(async (transaction) => {
                     // 1. 檢查時間段是否已被預約
                     const slotDoc = await transaction.get(slotRef);
@@ -667,7 +669,7 @@
                         return { success: false, error: '時段已被預約' };
                     }
                     
-                    // 2. 檢查學生是否已經有預約 (查詢 appointments)
+                    // 2. 檢查學生是否已經有預約
                     const existingSnapshot = await transaction.get(
                         db.collection("appointments")
                             .where("school", "==", booking.school)
@@ -680,7 +682,7 @@
                         return { success: false, error: '您已經有一個有效預約' };
                     }
                     
-                    // 3. 使用學生鎖確保唯一性（雙重保險）
+                    // 3. 使用學生鎖確保唯一性
                     const studentLockDoc = await transaction.get(studentLockRef);
                     if (studentLockDoc.exists) {
                         return { success: false, error: '您已經有一個有效預約' };
@@ -714,7 +716,6 @@
                 });
                 
                 if (result.success) {
-                    // 清除快取
                     availabilityCache.delete(booking.date);
                 }
                 
@@ -753,7 +754,7 @@
                 console.log(`🔓 時間段鎖已釋放：${date} ${time}`);
             }
             
-            // 2. 釋放學生鎖（無論如何都要釋放，因為這個預約取消了）
+            // 2. 釋放學生鎖
             if (school && className && studentId) {
                 const studentLockId = `${school}_${className}_${studentId}`;
                 const studentLockRef = db.collection("studentLocks").doc(studentLockId);
@@ -761,7 +762,6 @@
                 console.log(`🔓 學生鎖已釋放：${school} ${className} ${studentId}`);
             }
             
-            // 清除快取
             availabilityCache.delete(date);
         } catch (error) {
             console.error("釋放鎖失敗", error);
@@ -822,7 +822,6 @@
             const hoursDiff = (now - bookingDateTime) / (1000 * 60 * 60);
             if (hoursDiff >= 12) {
                 await updateBookingStatus(b.id, 'no-show', { noShowAt: now.toISOString() });
-                // 釋放學生鎖（因為變成了no-show）
                 if (b.school && b.class && b.studentId) {
                     const studentLockId = `${b.school}_${b.class}_${b.studentId}`;
                     const studentLockRef = db.collection("studentLocks").doc(studentLockId);
@@ -2216,13 +2215,15 @@
             renderStudentCalendar();
         } else {
             if (result.error === '時段已被預約') {
-                showFeedback('很抱歉，您選擇的時段剛剛被其他人預約了，請重新選擇', true);
+                showFeedback('⏰ 很抱歉，您選擇的時段剛剛被其他人預約了，請重新選擇其他時間', true);
                 await fetchBookings();
                 renderTimeSlots(date);
             } else if (result.error === '您已經有一個有效預約') {
-                showFeedback('您已經有一個有效預約，無法重複預約', true);
+                showFeedback('📌 您已經有一個有效預約，無法重複預約。如要更改，請使用「修改我的預約」功能', true);
+            } else if (result.error === '系統繁忙，請稍後再試') {
+                showFeedback('⏳ 系統目前忙碌（可能多人同時預約），請等待 3-5 秒後再試一次', true);
             } else {
-                showFeedback('❌ 預約失敗，請稍後再試', true);
+                showFeedback('❌ 預約失敗，原因：' + (result.error || '未知錯誤') + '。請稍後再試', true);
             }
         }
 
