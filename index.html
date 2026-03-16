@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 學生預約 (v8)</title>
+    <title>Hair World 學生預約 (v9 分類折疊+家長統計)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-    <!-- Chart.js 輕量圖表 -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* 原有樣式保留，此處僅列出新增部分，完整樣式與之前相同 */
+        /* ========== 完整樣式 ========== */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #FFF5E6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 12px 0 30px 0; margin: 0; }
         .app-container { width: 100%; max-width: 400px; background-color: white; border-radius: 32px 32px 0 0; box-shadow: 0 8px 30px rgba(247, 147, 49, 0.15); overflow: hidden; padding: 20px 20px 30px 20px; margin: 10px 12px; border: 1px solid #FFD8B2; }
@@ -91,8 +91,15 @@
         .noshow-btn { background: #dc3545; color: white; border: none; border-radius: 30px; padding: 5px 12px; font-size: 13px; cursor: pointer; box-shadow: 0 2px 0 #bd2130; }
         .back-btn { background: white; border: 2px solid #F25C0A; color: #F25C0A; font-weight: 600; padding: 14px; border-radius: 40px; width: 100%; font-size: 18px; cursor: pointer; margin-top: 20px; }
         .note { color: #B45A2A; font-size: 14px; margin: 8px 0 0 8px; }
-        .admin-settings { margin-top: 20px; border: 2px solid #F25C0A; border-radius: 28px; padding: 15px; background: #FFF9F2; }
-        .admin-settings h4 { color: #B04400; margin-bottom: 10px; }
+
+        /* 管理員設定分類折疊樣式 */
+        .settings-section { margin-bottom: 10px; border: 1px solid #FFB985; border-radius: 20px; background: #FFF9F2; }
+        .settings-section summary { font-weight: 600; color: #F25C0A; padding: 12px 15px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+        .settings-section summary::-webkit-details-marker { display: none; }
+        .settings-section summary::after { content: '▼'; font-size: 12px; transition: transform 0.2s; }
+        .settings-section[open] summary::after { transform: rotate(180deg); }
+        .settings-section .section-content { padding: 0 15px 15px 15px; }
+
         .grade-scroll-container { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 10px; margin-bottom: 10px; display: flex; gap: 12px; }
         .grade-card { display: inline-block; min-width: 160px; background: white; border: 1px solid #FFB985; border-radius: 20px; padding: 10px; white-space: normal; vertical-align: top; }
         .grade-title { font-weight: 700; color: #F25C0A; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
@@ -152,11 +159,9 @@
         .edit-mode-badge { background: #ffc107; color: #333; padding: 2px 8px; border-radius: 30px; font-size: 12px; }
         .total-badge { background: #F25C0A; color: white; padding: 5px 12px; border-radius: 30px; font-size: 14px; margin-left: 10px; }
         .completed-section, .noshow-section { margin-top: 20px; border-top: 2px dashed #FFB985; padding-top: 15px; }
-        /* 師傅選擇區 */
         .barber-selector { display: flex; gap: 5px; margin-top: 5px; }
         .barber-selector label { font-size: 13px; margin-right: 5px; }
         .barber-selector input[type="radio"] { width: auto; margin-right: 2px; }
-        /* 列表排序標題 */
         .list-header { display: flex; justify-content: space-between; font-weight: bold; padding: 5px 0; border-bottom: 1px solid #FFB985; margin-bottom: 5px; cursor: pointer; }
         .list-header span { flex: 1; }
 
@@ -192,7 +197,7 @@
             <div class="form-group"><label class="required">預約時間</label><select id="timeSlot" required></select><div class="note" id="timeNote"></div></div>
             <div id="captchaContainer" style="display: none;"><div class="captcha-group"><span id="captchaQuestion"></span><input type="number" id="captchaAnswer" placeholder="輸入答案" min="0"></div></div>
             
-            <!-- 預約提示框 v8 -->
+            <!-- 預約提示框 v9 -->
             <div style="background: #FFF2E3; border-radius: 20px; padding: 10px; margin: 10px 0; font-size: 14px; color: #B04400; border: 1px solid #FFB985;">
                 <i class="fa-solid fa-circle-info"></i> 
                 <strong>預約小提示：</strong> 提交後系統需要約5秒處理，請稍候。若多人同時預約同一時段，將以提交時間最早者優先，時間相同則隨機抽選。
@@ -211,13 +216,14 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <!-- 版本標記 v8 -->
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 8 (學生版)</div>
+        <!-- 版本標記 v9 -->
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 9 (學生版)</div>
         <div class="divider"></div>
         <!-- 管理員及員工入口 -->
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
         <div style="margin-top: 8px;"><label>員工專區</label><div class="admin-row"><input type="password" id="staffPass" placeholder="員工密碼" value=""><button class="btn-small" id="enterStaffBtn">進入員工頁面</button></div></div>
     </div>
+
     <!-- 管理員月曆頁面 (學校專用，只顯示學生預約) -->
     <div id="calendarPage" class="page hidden">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -266,20 +272,26 @@
         </div>
         <div class="suspicious-panel" id="suspiciousPanel"><h4>🚨 可疑活動監控 (最近1小時同設備多筆預約)</h4><div class="suspicious-table" id="suspiciousTable"></div><div class="clear-suspicious"><button class="btn-small" id="clearSuspicious">清除舊記錄</button></div></div>
         <div class="shadow-calendar"><div class="shadow-header"><h5 id="shadowMonthYear"></h5><div class="shadow-nav"><button id="shadowPrevMonth">←</button><button id="shadowNextMonth">→</button></div></div><div class="weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div id="shadowGrid" class="shadow-grid"></div><div class="shadow-footer"><button class="btn-small" id="clearShadowMonth">清除本月數字</button></div></div>
-        <details class="admin-settings" id="adminSettings" open>
-            <summary style="font-weight:600; color:#F25C0A;">⚙️ 管理員設定 (點擊展開/收起)</summary>
-            <div style="margin-top:15px;">
-                <!-- 欄位顯示、必填、可重複、記錄開關 -->
-                <h4>👁️ 欄位顯示、必填、可重複與記錄開關</h4>
+        
+        <!-- ========== 分類折疊管理員設定 ========== -->
+        <details class="settings-section" id="section-field" open>
+            <summary>👁️ 欄位顯示、必填、可重複與記錄開關</summary>
+            <div class="section-content">
                 <div id="fieldSettingsContainer"></div>
+            </div>
+        </details>
 
-                <!-- 師傅管理 -->
-                <h4 style="margin-top:20px;">💇 師傅管理</h4>
+        <details class="settings-section" id="section-barber">
+            <summary>💇 師傅管理</summary>
+            <div class="section-content">
                 <div id="barbersContainer" class="item-list"></div>
                 <div class="add-item"><input type="text" id="newBarberName" placeholder="師傅名稱"><button class="btn-small" id="addBarberBtn">新增師傅</button></div>
+            </div>
+        </details>
 
-                <!-- 時段管理 -->
-                <h4 style="margin-top:20px;">⏰ 時段管理</h4>
+        <details class="settings-section" id="section-timeslot">
+            <summary>⏰ 時段管理</summary>
+            <div class="section-content">
                 <div style="border:1px solid #FFB985; border-radius:28px; padding:12px; margin-bottom:20px;">
                     <div style="font-weight:600; color:#B04400;">平日預約時間</div>
                     <div id="weekdaySlotsContainer" class="time-slot-list"></div>
@@ -290,11 +302,24 @@
                     <div id="holidaySlotsContainer" class="time-slot-list"></div>
                     <div class="add-time-slot"><input type="text" id="newHolidaySlot" placeholder="例如 10:30" pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"><button class="btn-small" id="addHolidaySlotBtn">新增</button></div>
                 </div>
+            </div>
+        </details>
 
-                <h4>📚 班級結構設定 (左右滑動查看各年級)</h4><div id="gradeContainer" class="grade-scroll-container"></div>
-                <div class="action-buttons"><button class="btn-small" id="applyDefaultToAll">套用預設(25)到所有班級</button><button class="btn-small" id="selectAllGrades">全選所有班級</button><button class="btn-small" id="deselectAllGrades">全不選</button></div>
-                
-                <h4 style="margin-top:15px;">🏫 學校管理 (下拉選單選項)</h4>
+        <details class="settings-section" id="section-class">
+            <summary>📚 班級結構設定</summary>
+            <div class="section-content">
+                <div id="gradeContainer" class="grade-scroll-container"></div>
+                <div class="action-buttons">
+                    <button class="btn-small" id="applyDefaultToAll">套用預設(25)到所有班級</button>
+                    <button class="btn-small" id="selectAllGrades">全選所有班級</button>
+                    <button class="btn-small" id="deselectAllGrades">全不選</button>
+                </div>
+            </div>
+        </details>
+
+        <details class="settings-section" id="section-school">
+            <summary>🏫 學校管理</summary>
+            <div class="section-content">
                 <div id="schoolListContainer" class="school-list"></div>
                 <div class="add-school">
                     <input type="text" id="newSchoolName" placeholder="學校全名">
@@ -302,47 +327,111 @@
                     <label style="display:flex; align-items:center;"><input type="checkbox" id="newSchoolEnabled" checked> 啟用</label>
                     <button class="btn-small" id="addSchoolBtn">新增</button>
                 </div>
+            </div>
+        </details>
 
-                <h4 style="margin-top:15px;">📊 年級管理 (下拉選單選項，順序對應數字年級1~6)</h4><div id="gradeListContainer" class="item-list"></div><div class="add-item"><input type="text" id="newGradeName" placeholder="例如 小一" value="小一"><button class="btn-small" id="addGradeBtn">新增年級</button></div>
-                <h4 style="margin-top:15px;">🔤 班別字母管理 (下拉選單選項)</h4><div id="letterListContainer" class="item-list"></div><div class="add-item"><input type="text" id="newLetterName" placeholder="例如 A" value="A" maxlength="1"><button class="btn-small" id="addLetterBtn">新增字母</button></div>
-                
-                <!-- 每日截止時間 -->
-                <h4 style="margin-top:20px;">⏳ 每日預約截止時間</h4>
+        <details class="settings-section" id="section-grade">
+            <summary>📊 年級管理</summary>
+            <div class="section-content">
+                <div id="gradeListContainer" class="item-list"></div>
+                <div class="add-item"><input type="text" id="newGradeName" placeholder="例如 小一" value="小一"><button class="btn-small" id="addGradeBtn">新增年級</button></div>
+            </div>
+        </details>
+
+        <details class="settings-section" id="section-letter">
+            <summary>🔤 班別字母管理</summary>
+            <div class="section-content">
+                <div id="letterListContainer" class="item-list"></div>
+                <div class="add-item"><input type="text" id="newLetterName" placeholder="例如 A" value="A" maxlength="1"><button class="btn-small" id="addLetterBtn">新增字母</button></div>
+            </div>
+        </details>
+
+        <details class="settings-section" id="section-deadline">
+            <summary>⏳ 每日預約截止時間</summary>
+            <div class="section-content">
                 <div class="form-group">
                     <label>每日截止時間 (例如 20:00，留空不限制)</label>
                     <input type="text" id="dailyCutoff" placeholder="HH:MM" pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]">
                     <small style="color:#B45A2A;">若設定此時間，則當天該時間後無法預約次日</small>
                 </div>
-                
-                <h4 style="margin-top:15px;">🔔 即時通知設定</h4>
+            </div>
+        </details>
+
+        <details class="settings-section" id="section-ntfy">
+            <summary>🔔 即時通知設定</summary>
+            <div class="section-content">
                 <div class="settings-row"><input type="text" id="ntfyTopic" placeholder="主題名稱" value="hairworld_demo"><button class="btn-small" id="testNotificationBtn">測試</button></div>
                 <div style="color:#B45A2A; font-size:12px; margin-top:5px;" id="testResult"></div><div class="copy-tip" id="copyTip" style="display:none;"></div>
                 <label style="display:flex; align-items:center; gap:8px; margin:8px 0;"><input type="checkbox" id="enableNotification" checked> 啟用預約通知</label>
-                
-                <h4 style="margin-top:15px;">🛡️ 防惡意設定</h4>
+            </div>
+        </details>
+
+        <details class="settings-section" id="section-captcha">
+            <summary>🛡️ 防惡意設定</summary>
+            <div class="section-content">
                 <label style="display:flex; align-items:center; gap:8px; margin:8px 0;"><input type="checkbox" id="enableCaptcha" checked> 啟用算術驗證碼</label>
-                
-                <h4 style="margin-top:15px;">📝 預約須知 (顯示在預約頁)</h4>
+            </div>
+        </details>
+
+        <details class="settings-section" id="section-notice">
+            <summary>📝 學生預約頁面文字設定</summary>
+            <div class="section-content">
+                <h4>📝 預約須知</h4>
                 <textarea id="noticeText" rows="4">• 每位同學只可有一個有效預約。\n• 預約時間前2小時內無法修改或取消。\n• 預約只是分散人流，必須按照店舖人數排隊。</textarea>
-                
                 <h4 style="margin-top:15px;">✅ 確認框文字設定</h4>
                 <div class="form-group"><label>截圖確認框文字</label><input type="text" id="screenshotText" value="確定已截圖的預約記錄"></div>
                 <div class="form-group"><label>學生證確認框文字</label><input type="text" id="studentCardText" value="我已準備好出示學生證核對"></div>
-                
-                <!-- 員工管理設定 -->
-                <h4 style="margin-top:20px;">👥 員工管理</h4>
+            </div>
+        </details>
+
+        <details class="settings-section" id="section-parent-notice">
+            <summary>🎫 家長優惠券頁面文字設定</summary>
+            <div class="section-content">
+                <h4>📝 預約須知</h4>
+                <textarea id="parentNoticeText" rows="4">• 每位家長只可有一個有效預約。\n• 預約時間前2小時內無法修改或取消。\n• 使用優惠券需出示相關證明。</textarea>
+                <h4 style="margin-top:15px;">✅ 確認框文字設定</h4>
+                <div class="form-group"><label>確認框文字</label><input type="text" id="parentScreenshotText" value="確定已使用優惠券預約"></div>
+                <div class="form-group"><label>家長證核對文字</label><input type="text" id="parentCardText" value="我已準備好出示優惠券核對"></div>
+            </div>
+        </details>
+
+        <details class="settings-section" id="section-staff">
+            <summary>👥 員工管理</summary>
+            <div class="section-content">
                 <div class="form-group"><label>員工登入密碼</label><input type="text" id="staffPasswordInput" placeholder="員工密碼" value="staff123"></div>
                 <div class="form-group"><label>員工編輯權限密碼</label><input type="text" id="staffEditPasswordInput" placeholder="編輯解鎖密碼" value="edit123"></div>
                 <label style="display:flex; align-items:center; gap:8px; margin:8px 0;"><input type="checkbox" id="staffCanEditDefault"> 員工預設可編輯 (若不勾選則需密碼解鎖)</label>
-                
-                <div class="password-change"><h4>🔐 修改管理員密碼</h4><input type="password" id="newPassword" placeholder="新密碼"><input type="password" id="confirmPassword" placeholder="確認新密碼"><button class="btn-small" id="changePasswordBtn">變更密碼</button></div>
+            </div>
+        </details>
+
+        <details class="settings-section" id="section-password">
+            <summary>🔐 修改管理員密碼</summary>
+            <div class="section-content">
+                <div class="password-change">
+                    <input type="password" id="newPassword" placeholder="新密碼">
+                    <input type="password" id="confirmPassword" placeholder="確認新密碼">
+                    <button class="btn-small" id="changePasswordBtn">變更密碼</button>
+                </div>
             </div>
         </details>
         
-        <!-- 所有預約紀錄表格 (只顯示學生預約) -->
+        <!-- 手風琴效果：每次只打開一個 -->
+        <script>
+            document.querySelectorAll('.settings-section').forEach(section => {
+                section.addEventListener('toggle', function() {
+                    if (this.open) {
+                        document.querySelectorAll('.settings-section').forEach(other => {
+                            if (other !== this) other.open = false;
+                        });
+                    }
+                });
+            });
+        </script>
+        
+        <!-- ========== 學生預約紀錄表格 ========== -->
         <div class="database-panel">
             <h4>
-                📋 待處理預約 (學生)
+                📋 學生待處理預約 (pending)
                 <span style="font-size:14px; margin-left:10px;">
                     <label>
                         <input type="checkbox" id="showAllStatus"> 顯示所有狀態
@@ -353,14 +442,39 @@
             <div class="sortable-table" id="pendingTable"></div>
             
             <div class="completed-section">
-                <h4>✅ 已完成預約 (學生) <span class="total-badge" id="completedTotal">0</span></h4>
+                <h4>✅ 學生已完成預約 (completed) <span class="total-badge" id="completedTotal">0</span></h4>
                 <div class="sortable-table" id="completedTable"></div>
             </div>
             
             <div class="noshow-section">
-                <h4>❌ 未到達預約 (學生) <span class="total-badge" id="noshowTotal">0</span></h4>
+                <h4>❌ 學生未到達預約 (no-show) <span class="total-badge" id="noshowTotal">0</span></h4>
                 <div class="sortable-table" id="noshowTable"></div>
                 <button class="btn-small" id="cleanOldNoShow">清除昨日未到達</button>
+            </div>
+        </div>
+
+        <!-- ========== 家長優惠券預約紀錄表格 ========== -->
+        <div class="database-panel" style="margin-top:20px; border-color:#28a745;">
+            <h4>
+                🎫 家長待處理預約 (pending)
+                <span style="font-size:14px; margin-left:10px;">
+                    <label>
+                        <input type="checkbox" id="showParentAllStatus"> 顯示所有狀態
+                    </label>
+                    <span id="parentTotalBookingsCount" style="margin-left:10px; font-weight:normal;">(總數: 0)</span>
+                </span>
+            </h4>
+            <div class="sortable-table" id="parentPendingTable"></div>
+            
+            <div class="completed-section">
+                <h4>✅ 家長已完成預約 (completed) <span class="total-badge" id="parentCompletedTotal">0</span></h4>
+                <div class="sortable-table" id="parentCompletedTable"></div>
+            </div>
+            
+            <div class="noshow-section">
+                <h4>❌ 家長未到達預約 (no-show) <span class="total-badge" id="parentNoshowTotal">0</span></h4>
+                <div class="sortable-table" id="parentNoshowTable"></div>
+                <button class="btn-small" id="cleanParentOldNoShow">清除昨日未到達</button>
             </div>
         </div>
 
@@ -448,7 +562,7 @@
     const ACTIVITY_KEY = 'hairWorldActivity';
     const SHADOW_KEY = 'hairWorldShadowMarks';
     const SYNC_MAIN_KEY = 'hairWorldSyncMain';
-    const OWNER_PASSWORD = 'owner123'; // 店主密碼，可自訂
+    const OWNER_PASSWORD = 'owner123';
 
     const REVIEW_WINDOW_MS = 5000;
 
@@ -530,9 +644,10 @@
         renderStudentCalendar();
     });
 
-    // ========== 設定資料結構 ==========
-    let bookings = []; // 所有預約 (用於員工頁面)
-    let studentBookings = []; // 僅學生預約 (用於管理員頁面)
+    // ========== 設定資料結構 (含家長文字欄位) ==========
+    let bookings = [];
+    let studentBookings = [];
+    let parentBookings = [];
     let config = {
         School: [
             { name: '中學', short: '中', enabled: true },
@@ -543,6 +658,9 @@
         notice: "• 每位同學只可有一個有效預約。\n• 預約時間前2小時內無法修改或取消。\n• 預約只是分散人流，必須按照店舖人數排隊。",
         screenshotLabel: "確定已截圖的預約記錄",
         studentCardLabel: "我已準備好出示學生證核對",
+        parentNotice: "• 每位家長只可有一個有效預約。\n• 預約時間前2小時內無法修改或取消。\n• 使用優惠券需出示相關證明。",
+        parentScreenshotLabel: "確定已使用優惠券預約",
+        parentCardLabel: "我已準備好出示優惠券核對",
         ntfyTopic: "hairworld_demo",
         ntfyEnabled: true,
         enableCaptcha: true,
@@ -599,16 +717,18 @@
                     data.date = data.date.split('T')[0];
                 }
                 if (!data.status) data.status = 'pending';
-                if (!data.type) data.type = 'student'; // 舊資料預設為學生
+                if (!data.type) data.type = 'student';
                 if (!data.voucherPurchased) data.voucherPurchased = false;
                 list.push(data);
             });
             bookings = list;
             studentBookings = list.filter(b => b.type === 'student');
+            parentBookings = list.filter(b => b.type === 'voucher');
         } catch (error) {
             console.error('讀取預約失敗', error);
             bookings = [];
             studentBookings = [];
+            parentBookings = [];
         }
     }
 
@@ -630,6 +750,9 @@
                 if (!config.weekdaySlots) config.weekdaySlots = ['16:00','16:20','16:40','17:00','17:20','17:40','18:00','18:20','18:40'];
                 if (!config.holidaySlots) config.holidaySlots = ['10:30','11:30','12:30'];
                 if (!config.barbers) config.barbers = ['師傅A', '師傅B', '師傅C', '師傅D'];
+                if (!config.parentNotice) config.parentNotice = "• 每位家長只可有一個有效預約。\n• 預約時間前2小時內無法修改或取消。\n• 使用優惠券需出示相關證明。";
+                if (!config.parentScreenshotLabel) config.parentScreenshotLabel = "確定已使用優惠券預約";
+                if (!config.parentCardLabel) config.parentCardLabel = "我已準備好出示優惠券核對";
                 if (config.dailyCutoff === undefined) config.dailyCutoff = '';
                 if (Array.isArray(config.School) && config.School.length > 0 && typeof config.School[0] === 'string') {
                     config.School = config.School.map(name => ({ name, short: name.substring(0,1), enabled: true }));
@@ -657,7 +780,7 @@
         }
     }
 
-    // ========== 預約建立與裁決 (支援 type 欄位) ==========
+    // ========== 預約建立與裁決 ==========
     async function createBooking(booking, type = 'student') {
         try {
             const pendingRef = db.collection("pending_reviews").doc();
@@ -719,7 +842,6 @@
                     winner = earliestGroup[randomIndex];
                 }
                 
-                // 贏家：建立正式預約，帶入 type
                 await db.collection("appointments").add({
                     email: winner.email || '',
                     school: winner.school,
@@ -801,7 +923,6 @@
         }
     }
 
-    // 更新預約狀態 (增加 processing 狀態)
     async function updateBookingStatus(bookingId, newStatus, additionalFields = {}) {
         try {
             await db.collection("appointments").doc(bookingId).update({ status: newStatus, ...additionalFields });
@@ -875,6 +996,11 @@
         });
         const schoolSelect = document.getElementById('school');
         if (schoolSelect) schoolSelect.required = config.visibleFields.school && config.requiredFields.school;
+        
+        // 家長版文字會由另一個頁面讀取，此處僅設定學生版
+        document.getElementById('screenshotLabel').textContent = config.screenshotLabel;
+        document.getElementById('studentCardLabel').textContent = config.studentCardLabel;
+        document.getElementById('bookingNoticeContent').innerHTML = config.notice.replace(/\n/g, '<br>');
     }
 
     // ========== 學校選擇渲染 ==========
@@ -890,7 +1016,6 @@
             }
         });
         
-        // 員工頁面的學校下拉選單
         const staffSchool = document.getElementById('staffSchool');
         if (staffSchool) {
             staffSchool.innerHTML = '<option value="">請選擇學校</option>';
@@ -1384,7 +1509,7 @@
         }
     }
 
-    // ========== 管理員表格渲染 (只顯示學生) ==========
+    // ========== 管理員表格渲染 (學生) ==========
     function renderAdminTables() {
         const today = getTodayStr();
         const showAll = document.getElementById('showAllStatus')?.checked || false;
@@ -1406,6 +1531,29 @@
         document.getElementById('pendingTable').innerHTML = renderTable(pendingList, true, false, false, true);
         document.getElementById('completedTable').innerHTML = renderTable(completedList, false, true, false, true);
         document.getElementById('noshowTable').innerHTML = renderTable(noshowList, false, false, true, true);
+    }
+
+    // ========== 管理員表格渲染 (家長) ==========
+    function renderParentTables() {
+        const today = getTodayStr();
+        const showAll = document.getElementById('showParentAllStatus')?.checked || false;
+
+        let pendingList = parentBookings.filter(b => b.status === 'pending' && b.date >= today);
+        let completedList = parentBookings.filter(b => b.status === 'completed');
+        let noshowList = parentBookings.filter(b => b.status === 'no-show');
+
+        const sortFunc = (a, b) => a.time?.localeCompare(b.time || '') || 0;
+        pendingList.sort(sortFunc);
+        completedList.sort(sortFunc);
+        noshowList.sort(sortFunc);
+
+        document.getElementById('parentCompletedTotal').innerText = completedList.length;
+        document.getElementById('parentNoshowTotal').innerText = noshowList.length;
+        document.getElementById('parentTotalBookingsCount').innerText = `(總數: ${parentBookings.length})`;
+
+        document.getElementById('parentPendingTable').innerHTML = renderTable(pendingList, true, false, false, false);
+        document.getElementById('parentCompletedTable').innerHTML = renderTable(completedList, false, true, false, false);
+        document.getElementById('parentNoshowTable').innerHTML = renderTable(noshowList, false, false, true, false);
     }
 
     function renderTable(bookingsArray, showComplete = false, showRevert = false, showDelete = false, isStudent = true) {
@@ -1449,7 +1597,7 @@
         return html;
     }
 
-    // ========== 統計報表函數 ==========
+    // ========== 統計報表 ==========
     let chartInstance = null;
     async function loadStats() {
         const completed = bookings.filter(b => b.status === 'completed');
@@ -1459,7 +1607,6 @@
         document.getElementById('totalStudents').innerText = totalStudents;
         document.getElementById('totalVouchers').innerText = totalVouchers;
 
-        // 統計各師傅的服務量與優惠券售出量
         const barberStats = {};
         config.barbers.forEach(name => {
             barberStats[name] = { services: 0, vouchers: 0 };
@@ -1478,7 +1625,6 @@
         const servicesData = labels.map(name => barberStats[name].services);
         const vouchersData = labels.map(name => barberStats[name].vouchers);
 
-        // 繪製柱狀圖
         const ctx = document.getElementById('barberChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
         chartInstance = new Chart(ctx, {
@@ -1513,7 +1659,7 @@
         });
     }
 
-    // ========== 員工頁面函數 (含 processing 列表) ==========
+    // ========== 員工頁面函數 ==========
     async function renderStaffPage(dateStr) {
         if (!dateStr) dateStr = getTodayStr();
         document.getElementById('staffDatePicker').value = dateStr;
@@ -1530,7 +1676,6 @@
         document.getElementById('completedCount').innerText = completed.length;
         document.getElementById('noshowCount').innerText = noshow.length;
 
-        // pending 列表 (含師傅選擇)
         const pendingDiv = document.getElementById('pendingList');
         pendingDiv.innerHTML = '';
         if (pending.length === 0) pendingDiv.innerHTML = '<div style="padding:10px; text-align:center;">無待處理預約</div>';
@@ -1554,7 +1699,6 @@
             });
         }
 
-        // processing 列表 (含買/未買按鈕)
         const processingDiv = document.getElementById('processingList');
         processingDiv.innerHTML = '';
         if (processing.length === 0) processingDiv.innerHTML = '<div style="padding:10px; text-align:center;">無處理中預約</div>';
@@ -1662,7 +1806,6 @@
 
     // ========== 事件綁定 ==========
     document.addEventListener('click', async function(e) {
-        // 管理員頁面的完成/刪除按鈕
         if (e.target.classList.contains('complete-btn') && !e.target.closest('#staffPage')) {
             const id = e.target.dataset.id;
             if (confirm('標記為已完成？')) {
@@ -1671,6 +1814,7 @@
                 renderAdminCalendar();
                 showDateDetail(document.getElementById('selectedDateTitle').innerText.split(' ')[0] || null);
                 renderAdminTables();
+                renderParentTables();
                 renderStudentCalendar();
             }
         }
@@ -1687,6 +1831,7 @@
             await fetchAllBookings();
             renderAdminCalendar();
             renderAdminTables();
+            renderParentTables();
             renderStudentCalendar();
         }
         if (e.target.classList.contains('delete-row-btn')) {
@@ -1696,6 +1841,7 @@
                 await fetchAllBookings();
                 renderAdminCalendar();
                 renderAdminTables();
+                renderParentTables();
                 renderStudentCalendar();
             }
         }
@@ -1708,11 +1854,11 @@
                 renderAdminCalendar();
                 showDateDetail(item.dataset.date);
                 renderAdminTables();
+                renderParentTables();
                 renderStudentCalendar();
             }
         }
 
-        // 員工頁面按鈕
         if (e.target.classList.contains('mark-processing')) {
             const id = e.target.dataset.id;
             const barberSelected = document.querySelector(`input[name="barber_${id}"]:checked`);
@@ -1806,7 +1952,6 @@
             barber: ''
         };
         
-        // 手動登記直接寫入 appointments，不經 pending_reviews
         try {
             await db.collection("appointments").add({
                 ...newBooking,
@@ -1863,6 +2008,9 @@
             document.getElementById('noticeText').value = config.notice;
             document.getElementById('screenshotText').value = config.screenshotLabel;
             document.getElementById('studentCardText').value = config.studentCardLabel;
+            document.getElementById('parentNoticeText').value = config.parentNotice;
+            document.getElementById('parentScreenshotText').value = config.parentScreenshotLabel;
+            document.getElementById('parentCardText').value = config.parentCardLabel;
             document.getElementById('ntfyTopic').value = config.ntfyTopic;
             document.getElementById('enableNotification').checked = config.ntfyEnabled;
             document.getElementById('enableCaptcha').checked = config.enableCaptcha;
@@ -1873,6 +2021,7 @@
             renderAdminCalendar();
             showDateDetail(null);
             renderAdminTables();
+            renderParentTables();
             renderSuspiciousTable();
             renderShadowCalendar();
         } else alert('密碼錯誤');
@@ -1915,7 +2064,7 @@
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().slice(0,10);
-        const oldNoshow = bookings.filter(b => b.status === 'no-show' && b.date <= yesterdayStr);
+        const oldNoshow = bookings.filter(b => b.status === 'no-show' && b.date <= yesterdayStr && b.type === 'student');
         for (let b of oldNoshow) {
             await deleteBookingById(b.id);
         }
@@ -1923,8 +2072,24 @@
         renderAdminTables();
     });
 
+    document.getElementById('cleanParentOldNoShow')?.addEventListener('click', async function() {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0,10);
+        const oldNoshow = bookings.filter(b => b.status === 'no-show' && b.date <= yesterdayStr && b.type === 'voucher');
+        for (let b of oldNoshow) {
+            await deleteBookingById(b.id);
+        }
+        await fetchAllBookings();
+        renderParentTables();
+    });
+
     document.getElementById('showAllStatus')?.addEventListener('change', function() {
         renderAdminTables();
+    });
+
+    document.getElementById('showParentAllStatus')?.addEventListener('change', function() {
+        renderParentTables();
     });
 
     // ========== 班級結構設定 ==========
@@ -2167,11 +2332,6 @@
         if (config.enableCaptcha) { container.style.display = 'block'; generateCaptcha(); } else container.style.display = 'none';
     }
 
-    function updateCheckboxLabels() {
-        document.getElementById('screenshotLabel').textContent = config.screenshotLabel;
-        document.getElementById('studentCardLabel').textContent = config.studentCardLabel;
-    }
-
     function updateBookingNotice() {
         let extra = '';
         if (config.dailyCutoff) {
@@ -2186,7 +2346,6 @@
         return (bt - now) / (1000*60*60) <= 2;
     }
 
-    // 修改預約
     async function performModify(email, school, className, studentId) {
         hideFeedback();
 
@@ -2202,7 +2361,7 @@
         }
 
         const found = bookings.find(b => 
-            b.status === 'pending' && conditions.every(cond => cond(b))
+            b.status === 'pending' && b.type === 'student' && conditions.every(cond => cond(b))
         );
 
         if (!found) {
@@ -2240,6 +2399,7 @@
         renderAdminCalendar();
         showDateDetail(null);
         renderAdminTables();
+        renderParentTables();
 
         const area = document.getElementById('studentInfoArea');
         const content = document.getElementById('studentInfoContent');
@@ -2315,7 +2475,6 @@
 
         await fetchAllBookings();
 
-        // 重複檢查
         if (config.visibleFields.studentId && !config.allowDuplicate.studentId) {
             if (config.visibleFields.school && config.visibleFields.class) {
                 if (bookings.find(b => b.school === school && b.class === className && b.studentId == studentIdInput && b.status === 'pending' && b.date >= today)) {
@@ -2374,7 +2533,6 @@
         }
     });
 
-    // 密碼修改
     document.getElementById('changePasswordBtn').addEventListener('click', async function() {
         const newPass = document.getElementById('newPassword').value.trim();
         const confirmPass = document.getElementById('confirmPassword').value.trim();
@@ -2391,11 +2549,13 @@
         } else alert('密碼更新失敗，請稍後再試');
     });
 
-    // 儲存設定
     document.getElementById('saveSettingsBtn').addEventListener('click', async function() {
         config.notice = document.getElementById('noticeText').value;
         config.screenshotLabel = document.getElementById('screenshotText').value;
         config.studentCardLabel = document.getElementById('studentCardText').value;
+        config.parentNotice = document.getElementById('parentNoticeText').value;
+        config.parentScreenshotLabel = document.getElementById('parentScreenshotText').value;
+        config.parentCardLabel = document.getElementById('parentCardText').value;
         config.ntfyTopic = document.getElementById('ntfyTopic').value.trim();
         config.ntfyEnabled = document.getElementById('enableNotification').checked;
         config.enableCaptcha = document.getElementById('enableCaptcha').checked;
@@ -2410,7 +2570,6 @@
             renderLetterListSettings();
             renderGradeListSettings();
             renderSchoolSettings();
-            updateCheckboxLabels();
             updateBookingNotice();
             renderSchoolSelect();
             const gradeSelect = document.getElementById('gradeSelect');
@@ -2422,7 +2581,6 @@
         } else alert('儲存失敗，請稍後再試');
     });
 
-    // 測試通知
     document.getElementById('testNotificationBtn').addEventListener('click', function() {
         const topic = document.getElementById('ntfyTopic').value.trim();
         const resultDiv = document.getElementById('testResult');
@@ -2441,7 +2599,6 @@
         }
     });
 
-    // 初始化
     (async function init() {
         const captchaContainer = document.getElementById('captchaContainer');
         const timeSlotGroup = document.getElementById('timeSlot').closest('.form-group');
@@ -2458,9 +2615,8 @@
         }
         const letterSelect = document.getElementById('letterSelect');
         if (letterSelect) letterSelect.innerHTML = '<option value="">請先選擇年級</option>';
-        updateCheckboxLabels();
-        updateBookingNotice();
         applyFieldSettings();
+        updateBookingNotice();
         renderStudentCalendar();
         renderTimeSlots(currentSelectedDate);
         toggleCaptcha();
