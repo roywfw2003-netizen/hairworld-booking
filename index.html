@@ -3,37 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 剪髮預約 (延遲確認+自動裁決 v7)</title>
+    <title>Hair World 學生預約 (v8)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-    <!-- 動態載入 Firestore 防護 -->
-    <script>
-    (function ensureFirestore() {
-        if (typeof firebase !== 'undefined' && firebase.firestore) return;
-        var script = document.createElement('script');
-        script.src = 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js';
-        script.onload = function() {
-            console.log('Firestore SDK 動態載入成功');
-            if (!firebase.apps.length) {
-                firebase.initializeApp({
-                    apiKey: "AIzaSyCTgUIWXKjNZqp-bC1jk-XxZvoMihs6vO4",
-                    authDomain: "hairworld-2026.firebaseapp.com",
-                    projectId: "hairworld-2026",
-                    storageBucket: "hairworld-2026.firebasestorage.app",
-                    messagingSenderId: "531811271889",
-                    appId: "1:531811271889:web:62bf3e37996b9b154831f0"
-                });
-            }
-        };
-        document.head.appendChild(script);
-    })();
-    </script>
+    <!-- Chart.js 輕量圖表 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* ========== 完整樣式 (與之前完全相同) ========== */
+        /* 原有樣式保留，此處僅列出新增部分，完整樣式與之前相同 */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #FFF5E6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 12px 0 30px 0; margin: 0; }
         .app-container { width: 100%; max-width: 400px; background-color: white; border-radius: 32px 32px 0 0; box-shadow: 0 8px 30px rgba(247, 147, 49, 0.15); overflow: hidden; padding: 20px 20px 30px 20px; margin: 10px 12px; border: 1px solid #FFD8B2; }
@@ -59,6 +39,7 @@
         .btn-success { background: #28a745; color: white; border: none; box-shadow: 0 4px 0 #1e7e34; }
         .btn-danger { background: #dc3545; color: white; border: none; box-shadow: 0 4px 0 #bd2130; }
         .btn-warning { background: #ffc107; color: #333; border: none; box-shadow: 0 4px 0 #d39e00; }
+        .btn-info { background: #17a2b8; color: white; border: none; box-shadow: 0 4px 0 #117a8b; }
         .divider { height: 1px; background: #FFD8B2; margin: 26px 0 18px 0; }
         .admin-row { display: flex; gap: 8px; align-items: center; margin: 20px 0 8px; }
         .admin-row input { flex: 2; padding: 14px 16px; height: 52px; }
@@ -106,7 +87,8 @@
         .appointment-item .actions { margin-left: auto; display: flex; gap: 5px; }
         .delete-btn { background: #ff6b6b; color: white; border: none; border-radius: 30px; padding: 5px 12px; font-size: 13px; cursor: pointer; box-shadow: 0 2px 0 #b30000; }
         .complete-btn { background: #28a745; color: white; border: none; border-radius: 30px; padding: 5px 12px; font-size: 13px; cursor: pointer; box-shadow: 0 2px 0 #1e7e34; }
-        .noshow-btn { background: #ffc107; color: #333; border: none; border-radius: 30px; padding: 5px 12px; font-size: 13px; cursor: pointer; box-shadow: 0 2px 0 #d39e00; }
+        .processing-btn { background: #ffc107; color: #333; border: none; border-radius: 30px; padding: 5px 12px; font-size: 13px; cursor: pointer; box-shadow: 0 2px 0 #d39e00; }
+        .noshow-btn { background: #dc3545; color: white; border: none; border-radius: 30px; padding: 5px 12px; font-size: 13px; cursor: pointer; box-shadow: 0 2px 0 #bd2130; }
         .back-btn { background: white; border: 2px solid #F25C0A; color: #F25C0A; font-weight: 600; padding: 14px; border-radius: 40px; width: 100%; font-size: 18px; cursor: pointer; margin-top: 20px; }
         .note { color: #B45A2A; font-size: 14px; margin: 8px 0 0 8px; }
         .admin-settings { margin-top: 20px; border: 2px solid #F25C0A; border-radius: 28px; padding: 15px; background: #FFF9F2; }
@@ -177,11 +159,21 @@
         /* 列表排序標題 */
         .list-header { display: flex; justify-content: space-between; font-weight: bold; padding: 5px 0; border-bottom: 1px solid #FFB985; margin-bottom: 5px; cursor: pointer; }
         .list-header span { flex: 1; }
+
+        /* 統計報表樣式 */
+        .stats-container { margin-top: 20px; padding: 15px; background: white; border-radius: 28px; border: 2px solid #F25C0A; }
+        .stats-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .stats-header h3 { color: #F25C0A; }
+        .chart-container { height: 300px; margin-bottom: 20px; }
+        .stats-summary { display: flex; gap: 15px; justify-content: space-around; margin-top: 15px; }
+        .summary-card { background: #FFF2E3; padding: 10px; border-radius: 20px; text-align: center; flex: 1; }
+        .summary-card .number { font-size: 24px; font-weight: bold; color: #F25C0A; }
+        .summary-card .label { font-size: 14px; color: #B04400; }
     </style>
 </head>
 <body>
 <div class="app-container" id="appContainer">
-    <div class="brand"><h1>Hair World</h1><span>剪髮預約</span></div>
+    <div class="brand"><h1>Hair World</h1><span>學生預約</span></div>
 
     <!-- 主預約頁面 -->
     <div id="bookingPage" class="page">
@@ -200,7 +192,7 @@
             <div class="form-group"><label class="required">預約時間</label><select id="timeSlot" required></select><div class="note" id="timeNote"></div></div>
             <div id="captchaContainer" style="display: none;"><div class="captcha-group"><span id="captchaQuestion"></span><input type="number" id="captchaAnswer" placeholder="輸入答案" min="0"></div></div>
             
-            <!-- 預約提示框 v7 -->
+            <!-- 預約提示框 v8 -->
             <div style="background: #FFF2E3; border-radius: 20px; padding: 10px; margin: 10px 0; font-size: 14px; color: #B04400; border: 1px solid #FFB985;">
                 <i class="fa-solid fa-circle-info"></i> 
                 <strong>預約小提示：</strong> 提交後系統需要約5秒處理，請稍候。若多人同時預約同一時段，將以提交時間最早者優先，時間相同則隨機抽選。
@@ -219,18 +211,48 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <!-- 版本標記 v7 -->
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 7 (時間優先+隨機裁決)</div>
+        <!-- 版本標記 v8 -->
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 8 (學生版)</div>
         <div class="divider"></div>
         <!-- 管理員及員工入口 -->
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
         <div style="margin-top: 8px;"><label>員工專區</label><div class="admin-row"><input type="password" id="staffPass" placeholder="員工密碼" value=""><button class="btn-small" id="enterStaffBtn">進入員工頁面</button></div></div>
     </div>
-    <!-- 管理員月曆頁面 -->
+    <!-- 管理員月曆頁面 (學校專用，只顯示學生預約) -->
     <div id="calendarPage" class="page hidden">
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div>
+                <button class="btn-small" id="showStatsBtn">📊 統計報表</button>
+            </div>
             <label class="sync-switch"><span>同步主頁</span><input type="checkbox" id="syncMainCalendar" checked></label>
         </div>
+        
+        <!-- 統計報表區塊 (預設隱藏) -->
+        <div id="statsSection" class="stats-container hidden">
+            <div class="stats-header">
+                <h3>📊 理髮師統計報表</h3>
+                <div>
+                    <input type="password" id="ownerPass" placeholder="店主密碼" style="width:120px; padding:8px; border-radius:30px; border:1px solid #FFB985;">
+                    <button class="btn-small" id="unlockStatsBtn">解鎖</button>
+                </div>
+            </div>
+            <div id="statsContent" style="display:none;">
+                <div class="chart-container">
+                    <canvas id="barberChart"></canvas>
+                </div>
+                <div class="stats-summary">
+                    <div class="summary-card">
+                        <div class="number" id="totalStudents">0</div>
+                        <div class="label">已剪學童</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="number" id="totalVouchers">0</div>
+                        <div class="label">已買優惠券</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="calendar-header">
             <div class="month-nav"><button id="prevMonth">←</button></div>
             <h2 id="monthYearDisplay"></h2>
@@ -314,14 +336,13 @@
                 <label style="display:flex; align-items:center; gap:8px; margin:8px 0;"><input type="checkbox" id="staffCanEditDefault"> 員工預設可編輯 (若不勾選則需密碼解鎖)</label>
                 
                 <div class="password-change"><h4>🔐 修改管理員密碼</h4><input type="password" id="newPassword" placeholder="新密碼"><input type="password" id="confirmPassword" placeholder="確認新密碼"><button class="btn-small" id="changePasswordBtn">變更密碼</button></div>
-                <!-- 注意：儲存設定按鈕已移至最下方 -->
             </div>
         </details>
         
-        <!-- 所有預約紀錄表格 -->
+        <!-- 所有預約紀錄表格 (只顯示學生預約) -->
         <div class="database-panel">
             <h4>
-                📋 待處理預約 (pending)
+                📋 待處理預約 (學生)
                 <span style="font-size:14px; margin-left:10px;">
                     <label>
                         <input type="checkbox" id="showAllStatus"> 顯示所有狀態
@@ -332,24 +353,23 @@
             <div class="sortable-table" id="pendingTable"></div>
             
             <div class="completed-section">
-                <h4>✅ 已完成預約 (completed) <span class="total-badge" id="completedTotal">0</span></h4>
+                <h4>✅ 已完成預約 (學生) <span class="total-badge" id="completedTotal">0</span></h4>
                 <div class="sortable-table" id="completedTable"></div>
             </div>
             
             <div class="noshow-section">
-                <h4>❌ 未到達預約 (no-show) <span class="total-badge" id="noshowTotal">0</span></h4>
+                <h4>❌ 未到達預約 (學生) <span class="total-badge" id="noshowTotal">0</span></h4>
                 <div class="sortable-table" id="noshowTable"></div>
                 <button class="btn-small" id="cleanOldNoShow">清除昨日未到達</button>
             </div>
         </div>
 
-        <!-- 儲存所有設定按鈕 (移至最底部) -->
+        <!-- 儲存所有設定按鈕 -->
         <button class="btn-small" id="saveSettingsBtn" style="width:100%; margin:20px 0;">💾 儲存所有設定</button>
-
         <button class="back-btn" id="backToBookingBtn">⟵ 返回預約頁</button>
     </div>
 
-    <!-- 員工專區頁面 -->
+    <!-- 員工專區頁面 (顯示所有預約，含學生與優惠券) -->
     <div id="staffPage" class="page hidden">
         <div class="staff-header">
             <h3>🧑‍💼 員工工作區</h3>
@@ -364,28 +384,38 @@
             <button class="btn-small" id="staffRefreshBtn">刷新</button>
         </div>
 
-        <h4>📅 當日預約 <span class="total-badge" id="pendingCount">0</span></h4>
+        <h4>📅 待處理預約 (pending) <span class="total-badge" id="pendingCount">0</span></h4>
         <div class="record-list" id="pendingList"></div>
 
-        <h4>➕ 手動登記剪髮 (現場)</h4>
+        <h4>⚙️ 處理中預約 (processing) <span class="total-badge" id="processingCount">0</span></h4>
+        <div class="record-list" id="processingList"></div>
+
+        <h4>➕ 手動登記 (現場/優惠券)</h4>
         <div id="staffFormContainer">
-            <div class="form-group" id="staff-group-school" style="display:none;"><label>學校名稱</label><select id="staffSchool"><option value="">請選擇</option></select></div>
-            <div class="form-group" id="staff-group-grade" style="display:none;"><label>年級</label><select id="staffGradeSelect"><option value="">請選擇</option></select></div>
-            <div class="form-group" id="staff-group-class" style="display:none;"><label>班別</label><select id="staffLetterSelect"><option value="">請選擇</option></select></div>
-            <div class="form-group" id="staff-group-studentId" style="display:none;"><label>學號</label><select id="staffStudentId"><option value="">請選擇</option></select></div>
-            <div class="form-group" id="staff-group-email" style="display:none;"><label>學生 Email (選填)</label><input type="email" id="staffEmail" placeholder="example@mail.com"></div>
+            <div class="form-group" id="staff-group-school"><label>學校名稱</label><select id="staffSchool"><option value="">請選擇</option></select></div>
+            <div class="form-group" id="staff-group-grade"><label>年級</label><select id="staffGradeSelect"><option value="">請選擇</option></select></div>
+            <div class="form-group" id="staff-group-class"><label>班別</label><select id="staffLetterSelect"><option value="">請選擇</option></select></div>
+            <div class="form-group" id="staff-group-studentId"><label>學號</label><select id="staffStudentId"><option value="">請選擇</option></select></div>
+            <div class="form-group" id="staff-group-email"><label>學生 Email (選填)</label><input type="email" id="staffEmail" placeholder="example@mail.com"></div>
+            <div class="form-group">
+                <label>預約類型</label>
+                <select id="staffBookingType">
+                    <option value="student">學生剪髮</option>
+                    <option value="voucher">優惠券剪髮</option>
+                </select>
+            </div>
             <button class="btn-small btn-success" id="submitStaffWalkin">✅ 完成登記</button>
         </div>
 
         <h4>✅ 已完成預約 (所有記錄) <span class="total-badge" id="completedCount">0</span></h4>
         <div class="record-list" id="completedList">
-            <div class="list-header" data-list="completed"><span data-sort="time">時間</span><span data-sort="school">學校</span><span data-sort="class">班級</span><span data-sort="studentId">學號</span><span data-sort="barber">師傅</span><span>操作</span></div>
+            <div class="list-header" data-list="completed"><span data-sort="time">時間</span><span data-sort="school">學校</span><span data-sort="class">班級</span><span data-sort="studentId">學號</span><span data-sort="barber">師傅</span><span>券</span><span>操作</span></div>
             <div id="completedItems"></div>
         </div>
 
         <h4>❌ 未到達記錄 (所有記錄) <span class="total-badge" id="noshowCount">0</span></h4>
         <div class="record-list" id="noshowList">
-            <div class="list-header" data-list="noshow"><span data-sort="time">時間</span><span data-sort="school">學校</span><span data-sort="class">班級</span><span data-sort="studentId">學號</span><span data-sort="barber">師傅</span><span>操作</span></div>
+            <div class="list-header" data-list="noshow"><span data-sort="time">時間</span><span data-sort="school">學校</span><span data-sort="class">班級</span><span data-sort="studentId">學號</span><span data-sort="barber">師傅</span><span>券</span><span>操作</span></div>
             <div id="noshowItems"></div>
         </div>
 
@@ -418,9 +448,9 @@
     const ACTIVITY_KEY = 'hairWorldActivity';
     const SHADOW_KEY = 'hairWorldShadowMarks';
     const SYNC_MAIN_KEY = 'hairWorldSyncMain';
+    const OWNER_PASSWORD = 'owner123'; // 店主密碼，可自訂
 
-    // ========== 【v7 核心參數】延遲確認時間 ==========
-    const REVIEW_WINDOW_MS = 5000; // 5秒後裁決
+    const REVIEW_WINDOW_MS = 5000;
 
     function getDeviceId() {
         let deviceId = localStorage.getItem(DEVICE_ID_KEY);
@@ -432,7 +462,6 @@
     }
     const deviceId = getDeviceId();
 
-    // ========== 可用時段快取 ==========
     const availabilityCache = new Map();
     const CACHE_TTL = 5000;
 
@@ -502,7 +531,8 @@
     });
 
     // ========== 設定資料結構 ==========
-    let bookings = [];
+    let bookings = []; // 所有預約 (用於員工頁面)
+    let studentBookings = []; // 僅學生預約 (用於管理員頁面)
     let config = {
         School: [
             { name: '中學', short: '中', enabled: true },
@@ -558,7 +588,7 @@
     function hideFeedback() { document.getElementById('formFeedback').style.display = 'none'; }
 
     // ========== Firebase 操作 ==========
-    async function fetchBookings() {
+    async function fetchAllBookings() {
         try {
             const snapshot = await db.collection("appointments").get();
             const list = [];
@@ -569,12 +599,16 @@
                     data.date = data.date.split('T')[0];
                 }
                 if (!data.status) data.status = 'pending';
+                if (!data.type) data.type = 'student'; // 舊資料預設為學生
+                if (!data.voucherPurchased) data.voucherPurchased = false;
                 list.push(data);
             });
             bookings = list;
+            studentBookings = list.filter(b => b.type === 'student');
         } catch (error) {
             console.error('讀取預約失敗', error);
             bookings = [];
+            studentBookings = [];
         }
     }
 
@@ -623,29 +657,26 @@
         }
     }
 
-    // ========== 【v7 核心】延遲確認 + 時間優先/隨機裁決 ==========
-    async function createBooking(booking) {
+    // ========== 預約建立與裁決 (支援 type 欄位) ==========
+    async function createBooking(booking, type = 'student') {
         try {
-            // 1. 先寫入待審核區 (pending_reviews)
             const pendingRef = db.collection("pending_reviews").doc();
             const submitTime = new Date().toISOString();
             await pendingRef.set({
                 ...booking,
+                type: type,
                 status: 'pending_review',
                 submitTime: submitTime,
                 reviewed: false,
                 deviceId: deviceId
             });
             
-            // 2. 顯示等待訊息
             showFeedback('⏳ 系統處理中，請稍候約5秒...', false);
             
-            // 3. 設定定時器，5秒後進行裁決
             setTimeout(async () => {
                 await reviewBookings(booking.date, booking.time);
             }, REVIEW_WINDOW_MS);
             
-            // 4. 儲存當前預約ID以便後續查詢結果
             localStorage.setItem('lastPendingId', pendingRef.id);
             
             return { success: true, pending: true, id: pendingRef.id };
@@ -656,10 +687,8 @@
         }
     }
 
-    // 裁決函數：處理同一時段的所有待審預約
     async function reviewBookings(date, time) {
         try {
-            // 取得所有待審核的預約（同一日期時間）
             const snapshot = await db.collection("pending_reviews")
                 .where("date", "==", date)
                 .where("time", "==", time)
@@ -676,44 +705,39 @@
                 });
             });
             
-            // 如果有衝突（多於一筆）
             if (pendings.length > 1) {
-                // 按提交時間排序（最早者優先）
                 pendings.sort((a, b) => a.submitTime.localeCompare(b.submitTime));
                 
-                // 找出提交時間相同的最早一群
                 const earliestTime = pendings[0].submitTime;
                 const earliestGroup = pendings.filter(p => p.submitTime === earliestTime);
                 
                 let winner;
                 if (earliestGroup.length === 1) {
-                    // 只有一個最早提交者，他就是贏家
                     winner = earliestGroup[0];
                 } else {
-                    // 多個最早提交者（時間完全相同），隨機選一個
                     const randomIndex = Math.floor(Math.random() * earliestGroup.length);
                     winner = earliestGroup[randomIndex];
                 }
                 
-                // 贏家：建立正式預約
+                // 贏家：建立正式預約，帶入 type
                 await db.collection("appointments").add({
-                    email: winner.email,
+                    email: winner.email || '',
                     school: winner.school,
                     class: winner.class,
                     studentId: winner.studentId,
                     date: winner.date,
                     time: winner.time,
                     status: 'pending',
+                    type: winner.type || 'student',
+                    voucherPurchased: false,
                     createdAt: new Date().toISOString()
                 });
                 
-                // 標記贏家為已處理且成功
                 await db.collection("pending_reviews").doc(winner.id).update({
                     reviewed: true,
                     result: 'success'
                 });
                 
-                // 輸家：標記為失敗
                 for (let p of pendings) {
                     if (p.id !== winner.id) {
                         await db.collection("pending_reviews").doc(p.id).update({
@@ -726,16 +750,17 @@
                 console.log(`裁決完成：贏家 ${winner.id}，輸家 ${pendings.length-1} 人`);
                 
             } else if (pendings.length === 1) {
-                // 只有一人，直接成功
                 const only = pendings[0];
                 await db.collection("appointments").add({
-                    email: only.email,
+                    email: only.email || '',
                     school: only.school,
                     class: only.class,
                     studentId: only.studentId,
                     date: only.date,
                     time: only.time,
                     status: 'pending',
+                    type: only.type || 'student',
+                    voucherPurchased: false,
                     createdAt: new Date().toISOString()
                 });
                 
@@ -747,7 +772,6 @@
                 console.log(`單人預約成功：${only.id}`);
             }
             
-            // 清除快取
             availabilityCache.delete(date);
             
         } catch (error) {
@@ -755,7 +779,6 @@
         }
     }
 
-    // 查詢預約結果（給前端輪詢用）
     async function checkBookingResult(pendingId) {
         try {
             const doc = await db.collection("pending_reviews").doc(pendingId).get();
@@ -778,6 +801,7 @@
         }
     }
 
+    // 更新預約狀態 (增加 processing 狀態)
     async function updateBookingStatus(bookingId, newStatus, additionalFields = {}) {
         try {
             await db.collection("appointments").doc(bookingId).update({ status: newStatus, ...additionalFields });
@@ -828,7 +852,7 @@
                 await updateBookingStatus(b.id, 'no-show', { noShowAt: now.toISOString() });
             }
         }
-        await fetchBookings();
+        await fetchAllBookings();
     }
 
     // ========== 欄位顯示/必填/標籤應用 ==========
@@ -865,11 +889,26 @@
                 select.appendChild(option);
             }
         });
+        
+        // 員工頁面的學校下拉選單
+        const staffSchool = document.getElementById('staffSchool');
+        if (staffSchool) {
+            staffSchool.innerHTML = '<option value="">請選擇學校</option>';
+            (config.School || []).forEach(school => {
+                if (school.enabled) {
+                    const option = document.createElement('option');
+                    option.value = school.name;
+                    option.textContent = school.name;
+                    staffSchool.appendChild(option);
+                }
+            });
+        }
     }
 
     // ========== 學校管理 UI ==========
     function renderSchoolSettings() {
         const container = document.getElementById('schoolListContainer');
+        if (!container) return;
         container.innerHTML = '';
         config.School.forEach((school, index) => {
             const div = document.createElement('div');
@@ -912,7 +951,7 @@
         });
     }
 
-    document.getElementById('addSchoolBtn').addEventListener('click', function() {
+    document.getElementById('addSchoolBtn')?.addEventListener('click', function() {
         const newName = document.getElementById('newSchoolName').value.trim();
         const newShort = document.getElementById('newSchoolShort').value.trim() || newName.substring(0,1);
         const enabled = document.getElementById('newSchoolEnabled').checked;
@@ -964,6 +1003,7 @@
     // ========== 時段管理 UI ==========
     function renderTimeSlotSettings() {
         const weekdayContainer = document.getElementById('weekdaySlotsContainer');
+        if (!weekdayContainer) return;
         weekdayContainer.innerHTML = '';
         config.weekdaySlots.forEach(slot => {
             const div = document.createElement('div');
@@ -972,13 +1012,15 @@
             weekdayContainer.appendChild(div);
         });
         const holidayContainer = document.getElementById('holidaySlotsContainer');
-        holidayContainer.innerHTML = '';
-        config.holidaySlots.forEach(slot => {
-            const div = document.createElement('div');
-            div.className = 'time-slot-item';
-            div.innerHTML = `${slot} <button class="remove-slot" data-type="holiday" data-slot="${slot}">刪除</button>`;
-            holidayContainer.appendChild(div);
-        });
+        if (holidayContainer) {
+            holidayContainer.innerHTML = '';
+            config.holidaySlots.forEach(slot => {
+                const div = document.createElement('div');
+                div.className = 'time-slot-item';
+                div.innerHTML = `${slot} <button class="remove-slot" data-type="holiday" data-slot="${slot}">刪除</button>`;
+                holidayContainer.appendChild(div);
+            });
+        }
         document.querySelectorAll('.remove-slot').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 const type = this.dataset.type;
@@ -990,7 +1032,7 @@
         });
     }
 
-    document.getElementById('addWeekdaySlotBtn').addEventListener('click', function() {
+    document.getElementById('addWeekdaySlotBtn')?.addEventListener('click', function() {
         const input = document.getElementById('newWeekdaySlot');
         const slot = input.value.trim();
         if (slot && /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(slot)) {
@@ -1002,7 +1044,7 @@
             } else alert('該時段已存在');
         } else alert('請輸入有效時間 (HH:MM)');
     });
-    document.getElementById('addHolidaySlotBtn').addEventListener('click', function() {
+    document.getElementById('addHolidaySlotBtn')?.addEventListener('click', function() {
         const input = document.getElementById('newHolidaySlot');
         const slot = input.value.trim();
         if (slot && /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(slot)) {
@@ -1154,6 +1196,37 @@
     document.getElementById('gradeSelect').addEventListener('change', updateLetterSelect);
     document.getElementById('letterSelect').addEventListener('change', updateStudentIdSelect);
 
+    // 員工頁面的年級連動
+    function staffUpdateLetterSelect() {
+        const gradeSelect = document.getElementById('staffGradeSelect');
+        const letterSelect = document.getElementById('staffLetterSelect');
+        const gradeName = gradeSelect.value;
+        if (!gradeName) { 
+            letterSelect.innerHTML = '<option value="">請先選擇年級</option>'; 
+            return; 
+        }
+        letterSelect.innerHTML = '<option value="">請選擇班別</option>';
+        config.letterNames.forEach(letter => letterSelect.innerHTML += `<option value="${letter}">${letter}</option>`);
+        staffUpdateStudentIdSelect();
+    }
+    function staffUpdateStudentIdSelect() {
+        const gradeName = document.getElementById('staffGradeSelect').value;
+        const letter = document.getElementById('staffLetterSelect').value;
+        const studentSelect = document.getElementById('staffStudentId');
+        if (!gradeName || !letter) { 
+            studentSelect.innerHTML = '<option value="">請先選擇年級與班別</option>'; 
+            return; 
+        }
+        const gradeNum = getGradeNumber(gradeName);
+        if (!gradeNum) { studentSelect.innerHTML = '<option value="">年級錯誤</option>'; return; }
+        const className = gradeNum + letter;
+        const limit = config.limits[className];
+        if (!limit) { studentSelect.innerHTML = '<option value="">該班級未設定人數上限</option>'; return; }
+        let options = '<option value="">請選擇學號</option>';
+        for (let i = 1; i <= limit; i++) options += `<option value="${i}">${i}</option>`;
+        studentSelect.innerHTML = options;
+    }
+
     // ========== 月曆與時段 ==========
     function getAvailableTimeSlotsFromDB(dateStr) {
         const baseSlots = getBaseTimeSlots(dateStr);
@@ -1273,13 +1346,13 @@
         const year = adminYear, month = adminMonth;
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month+1, 0).getDate();
-        const total = bookings.filter(b => b.date.startsWith(`${year}-${String(month+1).padStart(2,'0')}`) && b.status === 'pending').length;
+        const total = studentBookings.filter(b => b.date.startsWith(`${year}-${String(month+1).padStart(2,'0')}`) && b.status === 'pending').length;
         document.getElementById('monthYearDisplay').innerText = `${year}年${month+1}月 (待處理 ${total})`;
         let html = '';
         for (let i = 0; i < firstDay; i++) html += '<div class="calendar-cell empty-cell"></div>';
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const count = bookings.filter(b => b.date === dateStr && b.status === 'pending').length;
+            const count = studentBookings.filter(b => b.date === dateStr && b.status === 'pending').length;
             const holiday = isHoliday(dateStr) ? 'holiday' : '';
             const unavailable = dateStr <= getTodayStr();
             const full = !unavailable && getAvailableTimeSlots(dateStr).length === 0;
@@ -1293,7 +1366,7 @@
         const title = document.getElementById('selectedDateTitle');
         const listDiv = document.getElementById('appointmentList');
         if (!dateStr) { title.innerText = '點擊日期查看預約'; listDiv.innerHTML = ''; return; }
-        const dayBookings = bookings.filter(b => b.date === dateStr && b.status === 'pending').sort((a,b)=>a.time.localeCompare(b.time));
+        const dayBookings = studentBookings.filter(b => b.date === dateStr && b.status === 'pending').sort((a,b)=>a.time.localeCompare(b.time));
         if (dayBookings.length === 0) { title.innerText = `${dateStr} 無待處理預約`; listDiv.innerHTML = '<div style="padding:10px;">當日尚無待處理預約</div>'; }
         else {
             title.innerText = `${dateStr} 待處理預約 (${dayBookings.length}人)`;
@@ -1311,14 +1384,15 @@
         }
     }
 
-    // ========== 管理員表格渲染 ==========
+    // ========== 管理員表格渲染 (只顯示學生) ==========
     function renderAdminTables() {
         const today = getTodayStr();
         const showAll = document.getElementById('showAllStatus')?.checked || false;
 
-        let pendingList = bookings.filter(b => b.status === 'pending' && b.date >= today);
-        let completedList = bookings.filter(b => b.status === 'completed');
-        let noshowList = bookings.filter(b => b.status === 'no-show');
+        let pendingList = studentBookings.filter(b => b.status === 'pending' && b.date >= today);
+        let completedList = studentBookings.filter(b => b.status === 'completed');
+        let processingList = studentBookings.filter(b => b.status === 'processing');
+        let noshowList = studentBookings.filter(b => b.status === 'no-show');
 
         const sortFunc = (a, b) => a.time?.localeCompare(b.time || '') || 0;
         pendingList.sort(sortFunc);
@@ -1327,17 +1401,17 @@
 
         document.getElementById('completedTotal').innerText = completedList.length;
         document.getElementById('noshowTotal').innerText = noshowList.length;
-        document.getElementById('totalBookingsCount').innerText = `(總數: ${bookings.length})`;
+        document.getElementById('totalBookingsCount').innerText = `(總數: ${studentBookings.length})`;
 
-        document.getElementById('pendingTable').innerHTML = renderTable(pendingList, true, false, false);
-        document.getElementById('completedTable').innerHTML = renderTable(completedList, false, true, false);
-        document.getElementById('noshowTable').innerHTML = renderTable(noshowList, false, false, true);
+        document.getElementById('pendingTable').innerHTML = renderTable(pendingList, true, false, false, true);
+        document.getElementById('completedTable').innerHTML = renderTable(completedList, false, true, false, true);
+        document.getElementById('noshowTable').innerHTML = renderTable(noshowList, false, false, true, true);
     }
 
-    function renderTable(bookingsArray, showComplete = false, showRevert = false, showDelete = false) {
+    function renderTable(bookingsArray, showComplete = false, showRevert = false, showDelete = false, isStudent = true) {
         if (bookingsArray.length === 0) return '<div style="padding:20px; text-align:center;">無記錄</div>';
         let headers = [];
-        if (config.showInRecords.email) headers.push('Email');
+        if (config.showInRecords.email && isStudent) headers.push('Email');
         if (config.showInRecords.school) headers.push('學校');
         if (config.showInRecords.grade) headers.push('年級');
         if (config.showInRecords.class) headers.push('班別');
@@ -1351,7 +1425,7 @@
 
         bookingsArray.forEach(b => {
             html += '<tr>';
-            if (config.showInRecords.email) html += `<td>${b.email || ''}</td>`;
+            if (config.showInRecords.email && isStudent) html += `<td>${b.email || ''}</td>`;
             if (config.showInRecords.school) html += `<td>${b.school || ''}</td>`;
             if (config.showInRecords.grade) {
                 const gradeNum = b.class ? b.class.charAt(0) : '';
@@ -1375,62 +1449,71 @@
         return html;
     }
 
-    // ========== 員工頁面函數 ==========
-    function applyStaffFieldSettings() {
-        const fields = ['school', 'grade', 'class', 'studentId', 'email'];
-        fields.forEach(field => {
-            const group = document.getElementById(`staff-group-${field}`);
-            if (group) group.style.display = config.visibleFields[field] ? 'block' : 'none';
+    // ========== 統計報表函數 ==========
+    let chartInstance = null;
+    async function loadStats() {
+        const completed = bookings.filter(b => b.status === 'completed');
+        const totalStudents = completed.filter(b => b.type === 'student').length;
+        const totalVouchers = completed.filter(b => b.voucherPurchased === true).length;
+        
+        document.getElementById('totalStudents').innerText = totalStudents;
+        document.getElementById('totalVouchers').innerText = totalVouchers;
+
+        // 統計各師傅的服務量與優惠券售出量
+        const barberStats = {};
+        config.barbers.forEach(name => {
+            barberStats[name] = { services: 0, vouchers: 0 };
         });
-        const staffSchool = document.getElementById('staffSchool');
-        if (staffSchool) {
-            staffSchool.innerHTML = '<option value="">請選擇學校</option>';
-            config.School.forEach(s => {
-                if (s.enabled) {
-                    const option = document.createElement('option');
-                    option.value = s.name;
-                    option.textContent = s.name;
-                    staffSchool.appendChild(option);
+
+        completed.forEach(b => {
+            if (b.barber && barberStats[b.barber]) {
+                barberStats[b.barber].services++;
+                if (b.voucherPurchased) {
+                    barberStats[b.barber].vouchers++;
                 }
-            });
-        }
-        const staffGrade = document.getElementById('staffGradeSelect');
-        if (staffGrade) {
-            staffGrade.innerHTML = '<option value="">請選擇年級</option>';
-            config.gradeNames.forEach(g => staffGrade.innerHTML += `<option value="${g}">${g}</option>`);
-        }
+            }
+        });
+
+        const labels = config.barbers;
+        const servicesData = labels.map(name => barberStats[name].services);
+        const vouchersData = labels.map(name => barberStats[name].vouchers);
+
+        // 繪製柱狀圖
+        const ctx = document.getElementById('barberChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '服務量 (已剪)',
+                        data: servicesData,
+                        backgroundColor: '#F25C0A',
+                        borderRadius: 10
+                    },
+                    {
+                        label: '優惠券售出',
+                        data: vouchersData,
+                        backgroundColor: '#28a745',
+                        borderRadius: 10
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
+            }
+        });
     }
 
-    function staffUpdateLetterSelect() {
-        const gradeSelect = document.getElementById('staffGradeSelect');
-        const letterSelect = document.getElementById('staffLetterSelect');
-        const gradeName = gradeSelect.value;
-        if (!gradeName) { 
-            letterSelect.innerHTML = '<option value="">請先選擇年級</option>'; 
-            return; 
-        }
-        letterSelect.innerHTML = '<option value="">請選擇班別</option>';
-        config.letterNames.forEach(letter => letterSelect.innerHTML += `<option value="${letter}">${letter}</option>`);
-        staffUpdateStudentIdSelect();
-    }
-    function staffUpdateStudentIdSelect() {
-        const gradeName = document.getElementById('staffGradeSelect').value;
-        const letter = document.getElementById('staffLetterSelect').value;
-        const studentSelect = document.getElementById('staffStudentId');
-        if (!gradeName || !letter) { 
-            studentSelect.innerHTML = '<option value="">請先選擇年級與班別</option>'; 
-            return; 
-        }
-        const gradeNum = getGradeNumber(gradeName);
-        if (!gradeNum) { studentSelect.innerHTML = '<option value="">年級錯誤</option>'; return; }
-        const className = gradeNum + letter;
-        const limit = config.limits[className];
-        if (!limit) { studentSelect.innerHTML = '<option value="">該班級未設定人數上限</option>'; return; }
-        let options = '<option value="">請選擇學號</option>';
-        for (let i = 1; i <= limit; i++) options += `<option value="${i}">${i}</option>`;
-        studentSelect.innerHTML = options;
-    }
-
+    // ========== 員工頁面函數 (含 processing 列表) ==========
     async function renderStaffPage(dateStr) {
         if (!dateStr) dateStr = getTodayStr();
         document.getElementById('staffDatePicker').value = dateStr;
@@ -1438,13 +1521,16 @@
         await autoMarkNoShow();
 
         const pending = bookings.filter(b => b.date === dateStr && b.status === 'pending');
+        const processing = bookings.filter(b => b.date === dateStr && b.status === 'processing');
         const completed = bookings.filter(b => b.status === 'completed');
         const noshow = bookings.filter(b => b.status === 'no-show');
 
         document.getElementById('pendingCount').innerText = pending.length;
+        document.getElementById('processingCount').innerText = processing.length;
         document.getElementById('completedCount').innerText = completed.length;
         document.getElementById('noshowCount').innerText = noshow.length;
 
+        // pending 列表 (含師傅選擇)
         const pendingDiv = document.getElementById('pendingList');
         pendingDiv.innerHTML = '';
         if (pending.length === 0) pendingDiv.innerHTML = '<div style="padding:10px; text-align:center;">無待處理預約</div>';
@@ -1457,14 +1543,34 @@
                     `<label style="margin-right:5px;"><input type="radio" name="barber_${b.id}" value="${barber}"> ${barber}</label>`
                 ).join('');
                 div.innerHTML = `
-                    <div class="record-info">⏰ ${b.time}  ${b.school} ${b.class} 學號${b.studentId} ${b.email ? '<br>📧 '+b.email : ''}</div>
+                    <div class="record-info">⏰ ${b.time}  ${b.school} ${b.class} 學號${b.studentId} ${b.email ? '<br>📧 '+b.email : ''} ${b.type === 'voucher' ? '🎟️優惠券' : ''}</div>
                     <div class="barber-selector">${barberRadios}</div>
                     <div class="record-actions">
-                        <button class="btn-small btn-success mark-complete" data-id="${b.id}">✅已到達</button>
+                        <button class="btn-small btn-success mark-processing" data-id="${b.id}">✂️開始剪髮</button>
                         <button class="btn-small btn-warning mark-noshow" data-id="${b.id}">❌未到達</button>
                     </div>
                 `;
                 pendingDiv.appendChild(div);
+            });
+        }
+
+        // processing 列表 (含買/未買按鈕)
+        const processingDiv = document.getElementById('processingList');
+        processingDiv.innerHTML = '';
+        if (processing.length === 0) processingDiv.innerHTML = '<div style="padding:10px; text-align:center;">無處理中預約</div>';
+        else {
+            processing.sort((a,b) => a.time.localeCompare(b.time));
+            processing.forEach(b => {
+                const div = document.createElement('div');
+                div.className = 'record-item';
+                div.innerHTML = `
+                    <div class="record-info">⏰ ${b.time}  ${b.school} ${b.class} 學號${b.studentId} ${b.email ? '<br>📧 '+b.email : ''} 師傅:${b.barber} ${b.type === 'voucher' ? '🎟️優惠券' : ''}</div>
+                    <div class="record-actions">
+                        <button class="btn-small btn-success mark-complete-with-voucher" data-id="${b.id}" data-voucher="true">💰買優惠券</button>
+                        <button class="btn-small btn-secondary mark-complete-without-voucher" data-id="${b.id}" data-voucher="false">✖️未買券</button>
+                    </div>
+                `;
+                processingDiv.appendChild(div);
             });
         }
 
@@ -1513,6 +1619,7 @@
             if (config.showInRecords.studentId) info += ` 學號${b.studentId || ''}`;
             if (config.showInRecords.barber && b.barber) info += ` 師傅:${b.barber}`;
             if (config.showInRecords.email && b.email) info += ` 📧${b.email}`;
+            const voucherIcon = b.voucherPurchased ? '✅' : '❌';
 
             let actions = '';
             if (showRevert && (staffEditMode || staffCanEditDefault)) {
@@ -1521,7 +1628,7 @@
             if (staffEditMode || staffCanEditDefault) {
                 actions += `<button class="btn-small delete-record" data-id="${b.id}">🗑️刪除</button>`;
             }
-            html += `<div class="record-item"><div class="record-info">${info}</div><div class="record-actions">${actions}</div></div>`;
+            html += `<div class="record-item"><div class="record-info">${info}</div><div style="min-width:30px;">${voucherIcon}</div><div class="record-actions">${actions}</div></div>`;
         });
         container.innerHTML = html || '<div style="padding:10px; text-align:center;">無記錄</div>';
     }
@@ -1555,11 +1662,12 @@
 
     // ========== 事件綁定 ==========
     document.addEventListener('click', async function(e) {
+        // 管理員頁面的完成/刪除按鈕
         if (e.target.classList.contains('complete-btn') && !e.target.closest('#staffPage')) {
             const id = e.target.dataset.id;
             if (confirm('標記為已完成？')) {
                 await updateBookingStatus(id, 'completed', { completedAt: new Date().toISOString() });
-                await fetchBookings();
+                await fetchAllBookings();
                 renderAdminCalendar();
                 showDateDetail(document.getElementById('selectedDateTitle').innerText.split(' ')[0] || null);
                 renderAdminTables();
@@ -1576,7 +1684,7 @@
                 return;
             }
             await updateBookingStatus(id, 'pending', { completedAt: null });
-            await fetchBookings();
+            await fetchAllBookings();
             renderAdminCalendar();
             renderAdminTables();
             renderStudentCalendar();
@@ -1585,7 +1693,7 @@
             const id = e.target.dataset.id;
             if (confirm('確定刪除此預約？')) {
                 await deleteBookingById(id);
-                await fetchBookings();
+                await fetchAllBookings();
                 renderAdminCalendar();
                 renderAdminTables();
                 renderStudentCalendar();
@@ -1596,7 +1704,7 @@
             const id = item?.dataset.id;
             if (id && confirm('確定刪除？')) {
                 await deleteBookingById(id);
-                await fetchBookings();
+                await fetchAllBookings();
                 renderAdminCalendar();
                 showDateDetail(item.dataset.date);
                 renderAdminTables();
@@ -1604,27 +1712,43 @@
             }
         }
 
-        if (e.target.classList.contains('mark-complete')) {
+        // 員工頁面按鈕
+        if (e.target.classList.contains('mark-processing')) {
             const id = e.target.dataset.id;
             const barberSelected = document.querySelector(`input[name="barber_${id}"]:checked`);
             if (!barberSelected) {
                 alert('請選擇一位師傅');
                 return;
             }
-            await updateBookingStatus(id, 'completed', { completedAt: new Date().toISOString(), barber: barberSelected.value });
-            await fetchBookings();
+            await updateBookingStatus(id, 'processing', { barber: barberSelected.value });
+            await fetchAllBookings();
             const date = document.getElementById('staffDatePicker').value;
             renderStaffPage(date);
         }
         if (e.target.classList.contains('mark-noshow')) {
             const id = e.target.dataset.id;
-            const barberSelected = document.querySelector(`input[name="barber_${id}"]:checked`);
-            if (!barberSelected) {
-                alert('請選擇一位師傅');
-                return;
-            }
-            await updateBookingStatus(id, 'no-show', { noShowAt: new Date().toISOString(), barber: barberSelected.value });
-            await fetchBookings();
+            await updateBookingStatus(id, 'no-show', { noShowAt: new Date().toISOString() });
+            await fetchAllBookings();
+            const date = document.getElementById('staffDatePicker').value;
+            renderStaffPage(date);
+        }
+        if (e.target.classList.contains('mark-complete-with-voucher')) {
+            const id = e.target.dataset.id;
+            await updateBookingStatus(id, 'completed', { 
+                completedAt: new Date().toISOString(),
+                voucherPurchased: true 
+            });
+            await fetchAllBookings();
+            const date = document.getElementById('staffDatePicker').value;
+            renderStaffPage(date);
+        }
+        if (e.target.classList.contains('mark-complete-without-voucher')) {
+            const id = e.target.dataset.id;
+            await updateBookingStatus(id, 'completed', { 
+                completedAt: new Date().toISOString(),
+                voucherPurchased: false 
+            });
+            await fetchAllBookings();
             const date = document.getElementById('staffDatePicker').value;
             renderStaffPage(date);
         }
@@ -1638,7 +1762,7 @@
                 return;
             }
             await updateBookingStatus(id, 'pending', { completedAt: null });
-            await fetchBookings();
+            await fetchAllBookings();
             const date = document.getElementById('staffDatePicker').value;
             renderStaffPage(date);
         }
@@ -1647,7 +1771,7 @@
             const id = e.target.dataset.id;
             if (confirm('確定刪除此記錄？')) {
                 await deleteBookingById(id);
-                await fetchBookings();
+                await fetchAllBookings();
                 const date = document.getElementById('staffDatePicker').value;
                 renderStaffPage(date);
             }
@@ -1660,13 +1784,12 @@
         const letter = document.getElementById('staffLetterSelect').value;
         const studentId = document.getElementById('staffStudentId').value;
         const email = document.getElementById('staffEmail').value.trim();
+        const type = document.getElementById('staffBookingType').value;
 
-        if (config.visibleFields.school && config.requiredFields.school && !school) { alert('請選擇學校'); return; }
-        if (config.visibleFields.grade && config.requiredFields.grade && !gradeName) { alert('請選擇年級'); return; }
-        if (config.visibleFields.class && config.requiredFields.class && !letter) { alert('請選擇班別'); return; }
-        if (config.visibleFields.studentId && config.requiredFields.studentId && !studentId) { alert('請選擇學號'); return; }
-        if (config.visibleFields.email && config.requiredFields.email && !email) { alert('請填寫Email'); return; }
-        if (email && !email.includes('@')) { alert('Email格式不正確'); return; }
+        if (!school || !gradeName || !letter || !studentId) {
+            alert('請填寫完整學校、年級、班別、學號');
+            return;
+        }
 
         const className = gradeName + letter;
         const today = getTodayStr();
@@ -1680,17 +1803,24 @@
             studentId,
             date: today,
             time: timeStr,
-            status: 'completed',
-            completedAt: now.toISOString(),
-            source: 'walkin',
             barber: ''
         };
-        const result = await createBooking(newBooking);
-        if (result.success) {
-            await fetchBookings();
+        
+        // 手動登記直接寫入 appointments，不經 pending_reviews
+        try {
+            await db.collection("appointments").add({
+                ...newBooking,
+                status: 'completed',
+                type: type,
+                voucherPurchased: false,
+                completedAt: now.toISOString(),
+                source: 'walkin'
+            });
+            await fetchAllBookings();
             renderStaffPage(today);
-        } else {
-            alert('登記失敗：' + result.error);
+            alert('登記成功');
+        } catch (error) {
+            alert('登記失敗：' + error.message);
         }
     });
 
@@ -1722,7 +1852,7 @@
         if (inputPass === adminPassword) {
             document.getElementById('bookingPage').classList.add('hidden');
             document.getElementById('calendarPage').classList.remove('hidden');
-            await fetchBookings();
+            await fetchAllBookings();
             renderClassSettings();
             renderSchoolSettings();
             renderGradeListSettings();
@@ -1753,7 +1883,7 @@
         if (inputPass === staffPassword) {
             document.getElementById('bookingPage').classList.add('hidden');
             document.getElementById('staffPage').classList.remove('hidden');
-            await fetchBookings();
+            await fetchAllBookings();
             applyStaffFieldSettings();
             document.getElementById('staffDatePicker').value = getTodayStr();
             await renderStaffPage(getTodayStr());
@@ -1766,6 +1896,21 @@
         document.getElementById('bookingPage').classList.remove('hidden');
     });
 
+    document.getElementById('showStatsBtn')?.addEventListener('click', function() {
+        const statsSection = document.getElementById('statsSection');
+        statsSection.classList.toggle('hidden');
+    });
+
+    document.getElementById('unlockStatsBtn')?.addEventListener('click', function() {
+        const pass = document.getElementById('ownerPass').value;
+        if (pass === OWNER_PASSWORD) {
+            document.getElementById('statsContent').style.display = 'block';
+            loadStats();
+        } else {
+            alert('店主密碼錯誤');
+        }
+    });
+
     document.getElementById('cleanOldNoShow')?.addEventListener('click', async function() {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -1774,7 +1919,7 @@
         for (let b of oldNoshow) {
             await deleteBookingById(b.id);
         }
-        await fetchBookings();
+        await fetchAllBookings();
         renderAdminTables();
     });
 
@@ -1785,6 +1930,7 @@
     // ========== 班級結構設定 ==========
     function renderClassSettings() {
         const container = document.getElementById('gradeContainer');
+        if (!container) return;
         container.innerHTML = '';
         const grades = ['1','2','3','4','5','6'];
         const letters = ['A','B','C','D','E','F'];
@@ -1893,6 +2039,7 @@
     // ========== 年級管理 ==========
     function renderGradeListSettings() {
         const container = document.getElementById('gradeListContainer');
+        if (!container) return;
         container.innerHTML = '';
         config.gradeNames.forEach((item, index) => {
             const div = document.createElement('div');
@@ -1933,6 +2080,7 @@
     // ========== 班別字母管理 ==========
     function renderLetterListSettings() {
         const container = document.getElementById('letterListContainer');
+        if (!container) return;
         container.innerHTML = '';
         config.letterNames.forEach((item, index) => {
             const div = document.createElement('div');
@@ -2081,7 +2229,7 @@
         }
 
         bookings = bookings.filter(b => b.id !== canceled.id);
-        await fetchBookings();
+        await fetchAllBookings();
 
         currentSelectedDate = getTomorrowStr();
         renderTimeSlots(currentSelectedDate);
@@ -2165,9 +2313,9 @@
 
         const className = gradeName + letter;
 
-        await fetchBookings();
+        await fetchAllBookings();
 
-        // 重複檢查（簡單檢查，避免同一人短時間內重複提交）
+        // 重複檢查
         if (config.visibleFields.studentId && !config.allowDuplicate.studentId) {
             if (config.visibleFields.school && config.visibleFields.class) {
                 if (bookings.find(b => b.school === school && b.class === className && b.studentId == studentIdInput && b.status === 'pending' && b.date >= today)) {
@@ -2187,43 +2335,37 @@
         document.getElementById('submitBooking').disabled = true;
 
         const newBooking = { email, school, class: className, studentId: studentIdInput, date, time };
-        const result = await createBooking(newBooking);
+        const result = await createBooking(newBooking, 'student');
         
         if (result.success && result.pending) {
-            // 等待5秒後輪詢結果
             showFeedback('⏳ 系統處理中，請稍候約5秒...', false);
             
-            // 儲存 pendingId 以便查詢
             const pendingId = result.id;
             
-            // 設定定時器，5秒後查詢結果
             setTimeout(async () => {
                 const checkResult = await checkBookingResult(pendingId);
                 
                 if (checkResult.status === 'reviewed') {
                     if (checkResult.result === 'success') {
                         showFeedback('✅ 預約成功！', false);
-                        await fetchBookings();
+                        await fetchAllBookings();
                         renderStudentCalendar();
                         
-                        // 顯示成功資訊
                         const area = document.getElementById('studentInfoArea');
                         const content = document.getElementById('studentInfoContent');
                         content.innerHTML = `<p><strong>📅 日期：</strong>${date} ${time}</p><p><strong>📧 Email：</strong>${email}</p><p><strong>🏫 學校：</strong>${school}</p><p><strong>🏫 班級：</strong>${className}</p><p><strong>🆔 學號：</strong>${studentIdInput}</p><p style="color: #28a745;">✅ 預約成功</p>`;
                         area.style.display = 'block';
                         
                     } else {
-                        // 【v7 修改】失敗時直接顯示「已經有人搶先一步」
                         showFeedback('⏰ 已經有人搶先一步，請重新預約', true);
                     }
                 } else {
-                    // 如果查詢不到結果（極少見情況），也顯示搶先訊息
                     showFeedback('⏰ 已經有人搶先一步，請重新預約', true);
                 }
                 
                 submitting = false;
                 document.getElementById('submitBooking').disabled = false;
-            }, REVIEW_WINDOW_MS + 500); // 5秒 + 500ms緩衝
+            }, REVIEW_WINDOW_MS + 500);
             
         } else if (result.success === false) {
             showFeedback('❌ 預約失敗：' + result.error, true);
@@ -2264,7 +2406,7 @@
 
         const success = await updateConfig(config);
         if (success) {
-            await fetchConfig();
+            await fetchAllBookings();
             renderLetterListSettings();
             renderGradeListSettings();
             renderSchoolSettings();
@@ -2307,7 +2449,7 @@
 
         await auth.signInAnonymously();
         await fetchConfig();
-        await fetchBookings();
+        await fetchAllBookings();
         renderSchoolSelect();
         const gradeSelect = document.getElementById('gradeSelect');
         if (gradeSelect) {
