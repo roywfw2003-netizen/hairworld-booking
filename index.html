@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 剪髮預約 (降級版+可立即使用)</title>
-    <!-- Firebase SDK 10.13.0 (最新版) -->
+    <title>Hair World 剪髮預約 (延遲確認+時間優先+隨機裁決 v6)</title>
+    <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -33,7 +33,7 @@
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* ========== 完整樣式 (與之前完全相同) ========== */
+        /* ========== 完整樣式 ========== */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #FFF5E6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 12px 0 30px 0; margin: 0; }
         .app-container { width: 100%; max-width: 400px; background-color: white; border-radius: 32px 32px 0 0; box-shadow: 0 8px 30px rgba(247, 147, 49, 0.15); overflow: hidden; padding: 20px 20px 30px 20px; margin: 10px 12px; border: 1px solid #FFD8B2; }
@@ -200,10 +200,10 @@
             <div class="form-group"><label class="required">預約時間</label><select id="timeSlot" required></select><div class="note" id="timeNote"></div></div>
             <div id="captchaContainer" style="display: none;"><div class="captcha-group"><span id="captchaQuestion"></span><input type="number" id="captchaAnswer" placeholder="輸入答案" min="0"></div></div>
             
-            <!-- 預約提示框 -->
+            <!-- 預約提示框 v6 -->
             <div style="background: #FFF2E3; border-radius: 20px; padding: 10px; margin: 10px 0; font-size: 14px; color: #B04400; border: 1px solid #FFB985;">
                 <i class="fa-solid fa-circle-info"></i> 
-                <strong>預約小提示：</strong> 若遇到「時段已被預約」表示剛剛被別人搶先了；若遇到「系統繁忙」表示同時太多人預約，請稍後再試或選擇非高峰時段。
+                <strong>預約小提示：</strong> 提交後系統需要約5秒處理，請稍候。若多人同時預約同一時段，將以提交時間最早者優先，時間相同則隨機抽選。
             </div>
 
             <div class="checkbox-wrapper"><input type="checkbox" id="confirmScreenshot"><label for="confirmScreenshot" id="screenshotLabel">確定已截圖的預約記錄</label></div>
@@ -219,8 +219,8 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <!-- 版本標記 (降級版) -->
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 5-simple (降級版)</div>
+        <!-- 版本標記 v6 -->
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 6 (時間優先+隨機裁決)</div>
         <div class="divider"></div>
         <!-- 管理員及員工入口 -->
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
@@ -418,6 +418,9 @@
     const ACTIVITY_KEY = 'hairWorldActivity';
     const SHADOW_KEY = 'hairWorldShadowMarks';
     const SYNC_MAIN_KEY = 'hairWorldSyncMain';
+
+    // ========== 【v6 核心參數】延遲確認時間 ==========
+    const REVIEW_WINDOW_MS = 5000; // 5秒後裁決
 
     function getDeviceId() {
         let deviceId = localStorage.getItem(DEVICE_ID_KEY);
@@ -620,46 +623,158 @@
         }
     }
 
-    // ========== 【降級版】簡單寫入，移除所有事務和鎖 ==========
+    // ========== 【v6 核心】延遲確認 + 時間優先/隨機裁決 ==========
     async function createBooking(booking) {
         try {
-            // 1. 檢查是否已有重複預約（簡單檢查，仍有微小可能超賣）
-            const snapshot = await db.collection("appointments")
-                .where("date", "==", booking.date)
-                .where("time", "==", booking.time)
-                .where("status", "==", "pending")
-                .get();
-                
-            if (!snapshot.empty) {
-                return { success: false, error: '時段已被預約' };
-            }
-            
-            // 2. 檢查學生是否已有預約
-            const studentSnapshot = await db.collection("appointments")
-                .where("school", "==", booking.school)
-                .where("class", "==", booking.class)
-                .where("studentId", "==", booking.studentId)
-                .where("status", "==", "pending")
-                .get();
-                
-            if (!studentSnapshot.empty) {
-                return { success: false, error: '您已經有一個有效預約' };
-            }
-            
-            // 3. 直接寫入預約記錄
-            if (!booking.status) booking.status = 'pending';
-            await db.collection("appointments").add({
+            // 1. 先寫入待審核區 (pending_review)
+            const pendingRef = db.collection("pending_reviews").doc();
+            const submitTime = new Date().toISOString();
+            await pendingRef.set({
                 ...booking,
-                createdAt: new Date().toISOString()
+                status: 'pending_review',
+                submitTime: submitTime,
+                reviewed: false,
+                deviceId: deviceId
             });
             
-            // 清除快取
-            availabilityCache.delete(booking.date);
+            // 2. 顯示等待訊息
+            showFeedback('⏳ 系統處理中，請稍候約5秒...', false);
             
-            return { success: true };
+            // 3. 設定定時器，5秒後進行裁決
+            setTimeout(async () => {
+                await reviewBookings(booking.date, booking.time);
+            }, REVIEW_WINDOW_MS);
+            
+            // 4. 儲存當前預約ID以便後續查詢結果
+            localStorage.setItem('lastPendingId', pendingRef.id);
+            
+            return { success: true, pending: true, id: pendingRef.id };
+            
         } catch (error) {
-            console.error('建立預約失敗', error);
-            return { success: false, error: error.message || '系統繁忙，請稍後再試' };
+            console.error('建立待審預約失敗', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // 裁決函數：處理同一時段的所有待審預約
+    async function reviewBookings(date, time) {
+        try {
+            // 取得所有待審核的預約（同一日期時間）
+            const snapshot = await db.collection("pending_reviews")
+                .where("date", "==", date)
+                .where("time", "==", time)
+                .where("reviewed", "==", false)
+                .get();
+            
+            if (snapshot.empty) return;
+            
+            const pendings = [];
+            snapshot.forEach(doc => {
+                pendings.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            
+            // 如果有衝突（多於一筆）
+            if (pendings.length > 1) {
+                // 按提交時間排序（最早者優先）
+                pendings.sort((a, b) => a.submitTime.localeCompare(b.submitTime));
+                
+                // 找出提交時間相同的最早一群
+                const earliestTime = pendings[0].submitTime;
+                const earliestGroup = pendings.filter(p => p.submitTime === earliestTime);
+                
+                let winner;
+                if (earliestGroup.length === 1) {
+                    // 只有一個最早提交者，他就是贏家
+                    winner = earliestGroup[0];
+                } else {
+                    // 多個最早提交者（時間完全相同），隨機選一個
+                    const randomIndex = Math.floor(Math.random() * earliestGroup.length);
+                    winner = earliestGroup[randomIndex];
+                }
+                
+                // 贏家：建立正式預約
+                await db.collection("appointments").add({
+                    email: winner.email,
+                    school: winner.school,
+                    class: winner.class,
+                    studentId: winner.studentId,
+                    date: winner.date,
+                    time: winner.time,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                });
+                
+                // 標記贏家為已處理且成功
+                await db.collection("pending_reviews").doc(winner.id).update({
+                    reviewed: true,
+                    result: 'success'
+                });
+                
+                // 輸家：標記為失敗
+                for (let p of pendings) {
+                    if (p.id !== winner.id) {
+                        await db.collection("pending_reviews").doc(p.id).update({
+                            reviewed: true,
+                            result: 'failed'
+                        });
+                    }
+                }
+                
+                console.log(`裁決完成：贏家 ${winner.id}，輸家 ${pendings.length-1} 人`);
+                
+            } else if (pendings.length === 1) {
+                // 只有一人，直接成功
+                const only = pendings[0];
+                await db.collection("appointments").add({
+                    email: only.email,
+                    school: only.school,
+                    class: only.class,
+                    studentId: only.studentId,
+                    date: only.date,
+                    time: only.time,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                });
+                
+                await db.collection("pending_reviews").doc(only.id).update({
+                    reviewed: true,
+                    result: 'success'
+                });
+                
+                console.log(`單人預約成功：${only.id}`);
+            }
+            
+            // 清除快取
+            availabilityCache.delete(date);
+            
+        } catch (error) {
+            console.error('裁決過程錯誤', error);
+        }
+    }
+
+    // 查詢預約結果（給前端輪詢用）
+    async function checkBookingResult(pendingId) {
+        try {
+            const doc = await db.collection("pending_reviews").doc(pendingId).get();
+            if (!doc.exists) return { status: 'not_found' };
+            
+            const data = doc.data();
+            if (data.reviewed) {
+                return {
+                    status: 'reviewed',
+                    result: data.result
+                };
+            } else {
+                return {
+                    status: 'pending'
+                };
+            }
+        } catch (error) {
+            console.error('查詢結果失敗', error);
+            return { status: 'error' };
         }
     }
 
@@ -2052,23 +2167,11 @@
 
         await fetchBookings();
 
-        // 重複檢查
-        if (config.visibleFields.email && !config.allowDuplicate.email) {
-            if (bookings.find(b => b.email === email && b.status === 'pending' && b.date >= today)) {
-                showFeedback(`此 Email (${email}) 已經有一個有效預約，請更換或使用「修改」功能`);
-                return;
-            }
-        }
-
+        // 重複檢查（簡單檢查，避免同一人短時間內重複提交）
         if (config.visibleFields.studentId && !config.allowDuplicate.studentId) {
             if (config.visibleFields.school && config.visibleFields.class) {
                 if (bookings.find(b => b.school === school && b.class === className && b.studentId == studentIdInput && b.status === 'pending' && b.date >= today)) {
                     showFeedback(`您已經有一個有效預約 (學校:${school} 班級:${className} 學號:${studentIdInput})，如要更改請點「修改我的預約」`);
-                    return;
-                }
-            } else {
-                if (bookings.find(b => b.studentId == studentIdInput && b.status === 'pending' && b.date >= today)) {
-                    showFeedback(`學號 ${studentIdInput} 已經有一個有效預約，請更換或使用「修改」功能`);
                     return;
                 }
             }
@@ -2082,34 +2185,49 @@
 
         submitting = true;
         document.getElementById('submitBooking').disabled = true;
-        showFeedback('⏳ 提交中...', false);
 
         const newBooking = { email, school, class: className, studentId: studentIdInput, date, time };
         const result = await createBooking(newBooking);
         
-        if (result.success) {
-            await fetchBookings();
-            addActivity(newBooking);
-            showFeedback('✅ 預約成功！', false);
-            const area = document.getElementById('studentInfoArea');
-            const content = document.getElementById('studentInfoContent');
-            content.innerHTML = `<p><strong>📅 日期：</strong>${date} ${time}</p><p><strong>📧 Email：</strong>${email}</p><p><strong>🏫 學校：</strong>${school}</p><p><strong>🏫 班級：</strong>${className}</p><p><strong>🆔 學號：</strong>${studentIdInput}</p><p style="color: #28a745;">✅ 有效預約</p>`;
-            area.style.display = 'block';
-            renderTimeSlots(date);
-            renderStudentCalendar();
-        } else {
-            if (result.error === '時段已被預約') {
-                showFeedback('⏰ 很抱歉，您選擇的時段剛剛被其他人預約了，請重新選擇其他時間', true);
-                await fetchBookings();
-                renderTimeSlots(date);
-            } else if (result.error === '您已經有一個有效預約') {
-                showFeedback('📌 您已經有一個有效預約，無法重複預約。如要更改，請使用「修改我的預約」功能', true);
-            } else {
-                showFeedback('❌ 預約失敗：' + (result.error || '系統繁忙，請稍後再試'), true);
-            }
+        if (result.success && result.pending) {
+            // 等待5秒後輪詢結果
+            showFeedback('⏳ 系統處理中，請稍候約5秒...', false);
+            
+            // 儲存 pendingId 以便查詢
+            const pendingId = result.id;
+            
+            // 設定定時器，5秒後查詢結果
+            setTimeout(async () => {
+                const checkResult = await checkBookingResult(pendingId);
+                
+                if (checkResult.status === 'reviewed') {
+                    if (checkResult.result === 'success') {
+                        showFeedback('✅ 預約成功！', false);
+                        await fetchBookings();
+                        renderStudentCalendar();
+                        
+                        // 顯示成功資訊
+                        const area = document.getElementById('studentInfoArea');
+                        const content = document.getElementById('studentInfoContent');
+                        content.innerHTML = `<p><strong>📅 日期：</strong>${date} ${time}</p><p><strong>📧 Email：</strong>${email}</p><p><strong>🏫 學校：</strong>${school}</p><p><strong>🏫 班級：</strong>${className}</p><p><strong>🆔 學號：</strong>${studentIdInput}</p><p style="color: #28a745;">✅ 預約成功</p>`;
+                        area.style.display = 'block';
+                        
+                    } else {
+                        showFeedback('⏰ 很抱歉，您選擇的時段剛剛被其他人預約了，請重新選擇其他時間', true);
+                    }
+                } else {
+                    showFeedback('⚠️ 系統處理逾時，請稍後查看「我的預約記錄」確認狀態', true);
+                }
+                
+                submitting = false;
+                document.getElementById('submitBooking').disabled = false;
+            }, REVIEW_WINDOW_MS + 500); // 5秒 + 500ms緩衝
+            
+        } else if (result.success === false) {
+            showFeedback('❌ 預約失敗：' + result.error, true);
+            submitting = false;
+            document.getElementById('submitBooking').disabled = false;
         }
-
-        setTimeout(() => { submitting = false; document.getElementById('submitBooking').disabled = false; }, 1000);
     });
 
     // 密碼修改
