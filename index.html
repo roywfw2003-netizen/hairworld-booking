@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 剪髮預約 (延遲確認+時間優先+隨機裁決 v6)</title>
+    <title>Hair World 剪髮預約 (延遲確認+自動裁決 v7)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -33,7 +33,7 @@
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* ========== 完整樣式 ========== */
+        /* ========== 完整樣式 (與之前完全相同) ========== */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #FFF5E6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 12px 0 30px 0; margin: 0; }
         .app-container { width: 100%; max-width: 400px; background-color: white; border-radius: 32px 32px 0 0; box-shadow: 0 8px 30px rgba(247, 147, 49, 0.15); overflow: hidden; padding: 20px 20px 30px 20px; margin: 10px 12px; border: 1px solid #FFD8B2; }
@@ -200,7 +200,7 @@
             <div class="form-group"><label class="required">預約時間</label><select id="timeSlot" required></select><div class="note" id="timeNote"></div></div>
             <div id="captchaContainer" style="display: none;"><div class="captcha-group"><span id="captchaQuestion"></span><input type="number" id="captchaAnswer" placeholder="輸入答案" min="0"></div></div>
             
-            <!-- 預約提示框 v6 -->
+            <!-- 預約提示框 v7 -->
             <div style="background: #FFF2E3; border-radius: 20px; padding: 10px; margin: 10px 0; font-size: 14px; color: #B04400; border: 1px solid #FFB985;">
                 <i class="fa-solid fa-circle-info"></i> 
                 <strong>預約小提示：</strong> 提交後系統需要約5秒處理，請稍候。若多人同時預約同一時段，將以提交時間最早者優先，時間相同則隨機抽選。
@@ -219,8 +219,8 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <!-- 版本標記 v6 -->
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 6 (時間優先+隨機裁決)</div>
+        <!-- 版本標記 v7 -->
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 7 (時間優先+隨機裁決)</div>
         <div class="divider"></div>
         <!-- 管理員及員工入口 -->
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
@@ -419,7 +419,7 @@
     const SHADOW_KEY = 'hairWorldShadowMarks';
     const SYNC_MAIN_KEY = 'hairWorldSyncMain';
 
-    // ========== 【v6 核心參數】延遲確認時間 ==========
+    // ========== 【v7 核心參數】延遲確認時間 ==========
     const REVIEW_WINDOW_MS = 5000; // 5秒後裁決
 
     function getDeviceId() {
@@ -623,10 +623,10 @@
         }
     }
 
-    // ========== 【v6 核心】延遲確認 + 時間優先/隨機裁決 ==========
+    // ========== 【v7 核心】延遲確認 + 時間優先/隨機裁決 ==========
     async function createBooking(booking) {
         try {
-            // 1. 先寫入待審核區 (pending_review)
+            // 1. 先寫入待審核區 (pending_reviews)
             const pendingRef = db.collection("pending_reviews").doc();
             const submitTime = new Date().toISOString();
             await pendingRef.set({
@@ -2213,10 +2213,12 @@
                         area.style.display = 'block';
                         
                     } else {
-                        showFeedback('⏰ 很抱歉，您選擇的時段剛剛被其他人預約了，請重新選擇其他時間', true);
+                        // 【v7 修改】失敗時直接顯示「已經有人搶先一步」
+                        showFeedback('⏰ 已經有人搶先一步，請重新預約', true);
                     }
                 } else {
-                    showFeedback('⚠️ 系統處理逾時，請稍後查看「我的預約記錄」確認狀態', true);
+                    // 如果查詢不到結果（極少見情況），也顯示搶先訊息
+                    showFeedback('⏰ 已經有人搶先一步，請重新預約', true);
                 }
                 
                 submitting = false;
