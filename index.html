@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 學生預約 (v10.2 完整版)</title>
+    <title>Hair World 學生預約 (v10.3 統一排序)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -205,7 +205,7 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.2 (學生版)</div>
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.3 (學生版)</div>
         <div class="divider"></div>
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
         <div style="margin-top: 8px;"><label>員工專區</label><div class="admin-row"><input type="password" id="staffPass" placeholder="員工密碼" value=""><button class="btn-small" id="enterStaffBtn">進入員工頁面</button></div></div>
@@ -513,13 +513,13 @@
 
         <h4>✅ 已完成預約 (所有記錄) <span class="total-badge" id="completedCount">0</span></h4>
         <div class="record-list" id="completedList">
-            <div class="list-header" data-list="completed"><span data-sort="time">時間</span><span data-sort="school">學校</span><span data-sort="class">班級</span><span data-sort="studentId">學號</span><span data-sort="barber">師傅</span><span>券</span><span>操作</span></div>
+            <div class="list-header" data-list="completed"><span>更新時間</span><span>學校</span><span>班級</span><span>學號</span><span>師傅</span><span>券</span><span>操作</span></div>
             <div id="completedItems"></div>
         </div>
 
         <h4>❌ 未到達記錄 (所有記錄) <span class="total-badge" id="noshowCount">0</span></h4>
         <div class="record-list" id="noshowList">
-            <div class="list-header" data-list="noshow"><span data-sort="time">時間</span><span data-sort="school">學校</span><span data-sort="class">班級</span><span data-sort="studentId">學號</span><span data-sort="barber">師傅</span><span>券</span><span>操作</span></div>
+            <div class="list-header" data-list="noshow"><span>更新時間</span><span>學校</span><span>班級</span><span>學號</span><span>師傅</span><span>券</span><span>操作</span></div>
             <div id="noshowItems"></div>
         </div>
 
@@ -671,10 +671,6 @@
     let staffEditPassword = config.staffEditPassword;
     let staffCanEditDefault = config.staffCanEditDefault;
     let staffEditMode = false;
-
-    let sortField = 'date', sortDirection = 'asc';
-    let staffCompletedSort = { field: 'time', dir: 'asc' };
-    let staffNoshowSort = { field: 'time', dir: 'asc' };
 
     let studentYear = new Date().getFullYear(), studentMonth = new Date().getMonth();
     let currentSelectedDate = getTomorrowStr();
@@ -848,7 +844,8 @@
                     status: 'pending',
                     type: winner.type || 'student',
                     voucherPurchased: false,
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
                 });
                 
                 await db.collection("pending_reviews").doc(winner.id).update({
@@ -879,7 +876,8 @@
                     status: 'pending',
                     type: only.type || 'student',
                     voucherPurchased: false,
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
                 });
                 
                 await db.collection("pending_reviews").doc(only.id).update({
@@ -921,7 +919,12 @@
 
     async function updateBookingStatus(bookingId, newStatus, additionalFields = {}) {
         try {
-            await db.collection("appointments").doc(bookingId).update({ status: newStatus, ...additionalFields });
+            const updateFields = { 
+                status: newStatus, 
+                updatedAt: new Date().toISOString(),
+                ...additionalFields 
+            };
+            await db.collection("appointments").doc(bookingId).update(updateFields);
             return true;
         } catch (error) {
             console.error('更新狀態失敗', error);
@@ -1502,10 +1505,21 @@
         let completedList = studentBookings.filter(b => b.status === 'completed');
         let noshowList = studentBookings.filter(b => b.status === 'no-show');
 
-        const sortFunc = (a, b) => a.time?.localeCompare(b.time || '') || 0;
-        pendingList.sort(sortFunc);
-        completedList.sort(sortFunc);
-        noshowList.sort(sortFunc);
+        pendingList.sort((a, b) => a.time?.localeCompare(b.time || '') || 0);
+        
+        // 已完成按更新時間排序
+        completedList.sort((a, b) => {
+            const aTime = a.updatedAt || a.completedAt || '';
+            const bTime = b.updatedAt || b.completedAt || '';
+            return bTime.localeCompare(aTime);
+        });
+        
+        // 未到達按更新時間排序
+        noshowList.sort((a, b) => {
+            const aTime = a.updatedAt || a.noShowAt || '';
+            const bTime = b.updatedAt || b.noShowAt || '';
+            return bTime.localeCompare(aTime);
+        });
 
         document.getElementById('completedTotal').innerText = completedList.length;
         document.getElementById('noshowTotal').innerText = noshowList.length;
@@ -1524,10 +1538,21 @@
         let completedList = parentBookings.filter(b => b.status === 'completed');
         let noshowList = parentBookings.filter(b => b.status === 'no-show');
 
-        const sortFunc = (a, b) => a.time?.localeCompare(b.time || '') || 0;
-        pendingList.sort(sortFunc);
-        completedList.sort(sortFunc);
-        noshowList.sort(sortFunc);
+        pendingList.sort((a, b) => a.time?.localeCompare(b.time || '') || 0);
+        
+        // 已完成按更新時間排序
+        completedList.sort((a, b) => {
+            const aTime = a.updatedAt || a.completedAt || '';
+            const bTime = b.updatedAt || b.completedAt || '';
+            return bTime.localeCompare(aTime);
+        });
+        
+        // 未到達按更新時間排序
+        noshowList.sort((a, b) => {
+            const aTime = a.updatedAt || a.noShowAt || '';
+            const bTime = b.updatedAt || b.noShowAt || '';
+            return bTime.localeCompare(aTime);
+        });
 
         document.getElementById('parentCompletedTotal').innerText = completedList.length;
         document.getElementById('parentNoshowTotal').innerText = noshowList.length;
@@ -1727,32 +1752,21 @@
             });
         }
 
-        renderStaffList('completed', completed, staffCompletedSort, true);
-        renderStaffList('noshow', noshow, staffNoshowSort, false);
+        // 已完成預約 - 按更新時間排序
+        renderStaffList('completed', completed, true);
+        // 未到達預約 - 按更新時間排序
+        renderStaffList('noshow', noshow, false);
     }
 
-    function renderStaffList(type, items, sortState, showRevert = false) {
+    function renderStaffList(type, items, showRevert = false) {
         const container = document.getElementById(type === 'completed' ? 'completedItems' : 'noshowItems');
         if (!container) return;
+        
+        // 按更新時間排序（最新的在上）
         const sorted = items.sort((a, b) => {
-            let aVal = a[sortState.field] || '';
-            let bVal = b[sortState.field] || '';
-            if (sortState.field === 'time') {
-                aVal = a.time || '';
-                bVal = b.time || '';
-            } else if (sortState.field === 'school') {
-                aVal = a.school || '';
-                bVal = b.school || '';
-            } else if (sortState.field === 'class') {
-                aVal = a.class || '';
-                bVal = b.class || '';
-            } else if (sortState.field === 'studentId') {
-                aVal = a.studentId || '';
-            } else if (sortState.field === 'barber') {
-                aVal = a.barber || '';
-            }
-            if (sortState.dir === 'asc') return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-            else return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+            const aTime = a.updatedAt || (type === 'completed' ? a.completedAt : a.noShowAt) || '';
+            const bTime = b.updatedAt || (type === 'completed' ? b.completedAt : b.noShowAt) || '';
+            return bTime.localeCompare(aTime);
         });
 
         let html = '';
@@ -1772,6 +1786,15 @@
             if (config.showInRecords.studentId) info += ` 學號${b.studentId || ''}`;
             if (config.showInRecords.barber && b.barber) info += ` 師傅:${b.barber}`;
             if (config.showInRecords.email && b.email) info += ` 📧${b.email}`;
+            
+            // 顯示更新時間
+            let updateTimeStr = '';
+            const updateTime = b.updatedAt || (type === 'completed' ? b.completedAt : b.noShowAt);
+            if (updateTime) {
+                const date = new Date(updateTime);
+                updateTimeStr = date.toLocaleTimeString('zh-HK', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            }
+            
             const typeIcon = b.type === 'voucher' ? '🎟️' : '👨‍🎓';
             const voucherIcon = b.voucherPurchased ? '✅' : '❌';
 
@@ -1782,36 +1805,13 @@
             if (staffEditMode || staffCanEditDefault) {
                 actions += `<button class="btn-small delete-record" data-id="${b.id}">🗑️刪除</button>`;
             }
-            html += `<div class="record-item"><div class="record-info">${typeIcon} ${info}</div><div style="min-width:30px;">${voucherIcon}</div><div class="record-actions">${actions}</div></div>`;
+            html += `<div class="record-item"><div class="record-info">${typeIcon} [${updateTimeStr}] ${info}</div><div style="min-width:30px;">${voucherIcon}</div><div class="record-actions">${actions}</div></div>`;
         });
         container.innerHTML = html || '<div style="padding:10px; text-align:center;">無記錄</div>';
     }
 
     function setupStaffListSort() {
-        document.querySelectorAll('.list-header[data-list="completed"] span').forEach(span => {
-            span.addEventListener('click', function() {
-                const field = this.dataset.sort;
-                if (staffCompletedSort.field === field) {
-                    staffCompletedSort.dir = staffCompletedSort.dir === 'asc' ? 'desc' : 'asc';
-                } else {
-                    staffCompletedSort.field = field;
-                    staffCompletedSort.dir = 'asc';
-                }
-                renderStaffPage(document.getElementById('staffDatePicker').value);
-            });
-        });
-        document.querySelectorAll('.list-header[data-list="noshow"] span').forEach(span => {
-            span.addEventListener('click', function() {
-                const field = this.dataset.sort;
-                if (staffNoshowSort.field === field) {
-                    staffNoshowSort.dir = staffNoshowSort.dir === 'asc' ? 'desc' : 'asc';
-                } else {
-                    staffNoshowSort.field = field;
-                    staffNoshowSort.dir = 'asc';
-                }
-                renderStaffPage(document.getElementById('staffDatePicker').value);
-            });
-        });
+        // 移除排序功能，統一按更新時間排序
     }
 
     document.addEventListener('click', async function(e) {
@@ -1988,6 +1988,7 @@
                 type: type,
                 voucherPurchased: false,
                 completedAt: now.toISOString(),
+                updatedAt: now.toISOString(),
                 source: 'walkin'
             });
             await fetchAllBookings();
