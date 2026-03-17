@@ -131,7 +131,7 @@
                 <div class="summary-card"><div class="number" id="totalVouchers">0</div><div class="label">已買優惠券</div></div>
             </div>
         </div>
-        <div class="footer">@vison 1.2 員工平板版 | 密碼保護模式 (3分鐘有效)</div>
+        <div class="footer">@vison 1.3 員工平板版 | 密碼保護模式 (3分鐘有效)</div>
     </div>
 
 <script>
@@ -150,7 +150,7 @@
     auth.signInAnonymously().catch(console.error);
 
     // ========== 密碼設定 ==========
-    const EDIT_PASSWORD = "edit123";  // 可自行修改此密碼
+    const EDIT_PASSWORD = "96357226";  // 已修改為您指定的密碼
     let passwordLastVerified = 0;      // 最後一次驗證密碼的時間戳
     const PASSWORD_VALID_DURATION = 3 * 60 * 1000; // 3分鐘有效期
 
@@ -312,7 +312,7 @@
             });
         }
 
-        // 家長待處理
+        // 家長待處理 - 直接改為已完成按鈕
         const parentDiv = document.getElementById('parentPendingList');
         parentDiv.innerHTML = '';
         if (parentPending.length === 0) parentDiv.innerHTML = '<div style="padding:30px; text-align:center;">無家長待處理預約</div>';
@@ -325,7 +325,7 @@
                     <div class="record-info"><strong>⏰ ${b.time}</strong><br>🏫 ${b.school} ${b.class} 學號${b.studentId}<br>🎟️ 優惠券</div>
                     <div class="barber-selector">${barberRadios}</div>
                     <div class="record-actions">
-                        <button class="btn btn-success mark-parent-complete" data-id="${b.id}" data-type="voucher">✅ 已完成</button>
+                        <button class="btn btn-success mark-parent-complete" data-id="${b.id}">✅ 已完成</button>
                         <button class="btn btn-warning mark-noshow" data-id="${b.id}">❌未到達</button>
                     </div>`;
                 parentDiv.appendChild(div);
@@ -415,8 +415,25 @@
         });
     }
 
-    async function updateBookingStatus(id, status, fields = {}) { try { await db.collection("appointments").doc(id).update({ status, ...fields }); return true; } catch(e){ return false; } }
-    async function deleteBookingById(id) { try { await db.collection("appointments").doc(id).delete(); return true; } catch(e){ return false; } }
+    async function updateBookingStatus(id, status, fields = {}) { 
+        try { 
+            await db.collection("appointments").doc(id).update({ status, ...fields }); 
+            return true; 
+        } catch(e){ 
+            console.error(e); 
+            return false; 
+        } 
+    }
+    
+    async function deleteBookingById(id) { 
+        try { 
+            await db.collection("appointments").doc(id).delete(); 
+            return true; 
+        } catch(e){ 
+            console.error(e); 
+            return false; 
+        } 
+    }
 
     document.addEventListener('click', async function(e) {
         const date = document.getElementById('staffDatePicker').value;
@@ -428,47 +445,86 @@
         }
         
         if (e.target.classList.contains('mark-processing')) {
-            const id = e.target.dataset.id; const type = e.target.dataset.type;
+            const id = e.target.dataset.id; 
+            const type = e.target.dataset.type;
             const selector = type === 'student' ? `input[name="barber_stu_${id}"]:checked` : `input[name="barber_par_${id}"]:checked`;
             const barber = document.querySelector(selector);
             if (!barber) { alert('請選擇師傅'); return; }
-            await updateBookingStatus(id, 'processing', { barber: barber.value });
-            await fetchAllBookings(); renderStaffPage(date);
+            const success = await updateBookingStatus(id, 'processing', { barber: barber.value });
+            if (success) {
+                await fetchAllBookings(); 
+                renderStaffPage(date);
+            }
         }
+        
         if (e.target.classList.contains('mark-parent-complete')) {
             const id = e.target.dataset.id;
             const selector = `input[name="barber_par_${id}"]:checked`;
             const barber = document.querySelector(selector);
             if (!barber) { alert('請選擇師傅'); return; }
-            await updateBookingStatus(id, 'completed', { completedAt: new Date().toISOString(), barber: barber.value, voucherPurchased: false });
-            await fetchAllBookings(); renderStaffPage(date);
+            const success = await updateBookingStatus(id, 'completed', { 
+                completedAt: new Date().toISOString(), 
+                barber: barber.value, 
+                voucherPurchased: false 
+            });
+            if (success) {
+                await fetchAllBookings(); 
+                renderStaffPage(date);
+            }
         }
+        
         if (e.target.classList.contains('mark-noshow')) {
             const id = e.target.dataset.id;
-            await updateBookingStatus(id, 'no-show', { noShowAt: new Date().toISOString() });
-            await fetchAllBookings(); renderStaffPage(date);
+            const success = await updateBookingStatus(id, 'no-show', { noShowAt: new Date().toISOString() });
+            if (success) {
+                await fetchAllBookings(); 
+                renderStaffPage(date);
+            }
         }
+        
         if (e.target.classList.contains('mark-complete-with-voucher')) {
             const id = e.target.dataset.id;
-            await updateBookingStatus(id, 'completed', { completedAt: new Date().toISOString(), voucherPurchased: true });
-            await fetchAllBookings(); renderStaffPage(date);
+            const success = await updateBookingStatus(id, 'completed', { 
+                completedAt: new Date().toISOString(), 
+                voucherPurchased: true 
+            });
+            if (success) {
+                await fetchAllBookings(); 
+                renderStaffPage(date);
+            }
         }
+        
         if (e.target.classList.contains('mark-complete-without-voucher')) {
             const id = e.target.dataset.id;
-            await updateBookingStatus(id, 'completed', { completedAt: new Date().toISOString(), voucherPurchased: false });
-            await fetchAllBookings(); renderStaffPage(date);
+            const success = await updateBookingStatus(id, 'completed', { 
+                completedAt: new Date().toISOString(), 
+                voucherPurchased: false 
+            });
+            if (success) {
+                await fetchAllBookings(); 
+                renderStaffPage(date);
+            }
         }
+        
         if (e.target.classList.contains('revert-complete')) {
-            const id = e.target.dataset.id; const booking = bookings.find(b => b.id === id);
+            const id = e.target.dataset.id; 
+            const booking = bookings.find(b => b.id === id);
             if (!booking) return;
             const conflict = bookings.find(b => b.date === booking.date && b.time === booking.time && b.status === 'pending' && b.id !== id);
             if (conflict) { alert('無法返回：該時段已有其他待處理預約。'); return; }
-            await updateBookingStatus(id, 'pending', { completedAt: null });
-            await fetchAllBookings(); renderStaffPage(date);
+            const success = await updateBookingStatus(id, 'pending', { completedAt: null });
+            if (success) {
+                await fetchAllBookings(); 
+                renderStaffPage(date);
+            }
         }
+        
         if (e.target.classList.contains('delete-record')) {
-            await deleteBookingById(e.target.dataset.id);
-            await fetchAllBookings(); renderStaffPage(date);
+            const success = await deleteBookingById(e.target.dataset.id);
+            if (success) {
+                await fetchAllBookings(); 
+                renderStaffPage(date);
+            }
         }
     });
 
@@ -480,18 +536,35 @@
         const email = document.getElementById('staffEmail').value.trim();
         const barber = document.getElementById('staffBarber').value;
         const type = document.getElementById('staffBookingType').value;
-        if (!school || !grade || !letter || !studentId || !barber) { alert('請填寫完整學校、年級、班別、學號、師傅'); return; }
+        if (!school || !grade || !letter || !studentId || !barber) { 
+            alert('請填寫完整學校、年級、班別、學號、師傅'); 
+            return; 
+        }
         const className = grade + letter;
         const today = getTodayStr();
         const now = new Date();
         const timeStr = now.toTimeString().slice(0,5);
         try {
             await db.collection("appointments").add({
-                email: email || '', school, class: className, studentId, date: today, time: timeStr, barber,
-                status: 'completed', type, voucherPurchased: false, completedAt: now.toISOString(), source: 'walkin'
+                email: email || '', 
+                school, 
+                class: className, 
+                studentId, 
+                date: today, 
+                time: timeStr, 
+                barber,
+                status: 'completed', 
+                type, 
+                voucherPurchased: false, 
+                completedAt: now.toISOString(), 
+                source: 'walkin'
             });
-            await fetchAllBookings(); renderStaffPage(today); alert('登記成功');
-        } catch (error) { alert('登記失敗：' + error.message); }
+            await fetchAllBookings(); 
+            renderStaffPage(today); 
+            alert('登記成功');
+        } catch (error) { 
+            alert('登記失敗：' + error.message); 
+        }
     });
 
     document.getElementById('staffRefreshBtn').addEventListener('click', function() {
@@ -504,7 +577,12 @@
         await fetchAllBookings();
         
         const staffGrade = document.getElementById('staffGradeSelect');
-        config.gradeNames.forEach(g => { let o = document.createElement('option'); o.value=g; o.textContent=g; staffGrade.appendChild(o); });
+        config.gradeNames.forEach(g => { 
+            let o = document.createElement('option'); 
+            o.value = g; 
+            o.textContent = g; 
+            staffGrade.appendChild(o); 
+        });
         
         document.getElementById('staffGradeSelect').addEventListener('change', staffUpdateLetterSelect);
         document.getElementById('staffLetterSelect').addEventListener('change', staffUpdateStudentIdSelect);
