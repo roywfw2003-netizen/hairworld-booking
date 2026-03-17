@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 學生預約 (v10 分類折疊+家長統計)</title>
+    <title>Hair World 學生預約 (v10.1 家長/學生分開)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -164,6 +164,9 @@
         .summary-card { background: #FFF2E3; padding: 10px; border-radius: 20px; text-align: center; flex: 1; }
         .summary-card .number { font-size: 24px; font-weight: bold; color: #F25C0A; }
         .summary-card .label { font-size: 14px; color: #B04400; }
+        .type-badge { font-size: 12px; padding: 2px 8px; border-radius: 20px; margin-left: 5px; }
+        .type-student { background: #F25C0A; color: white; }
+        .type-voucher { background: #28a745; color: white; }
     </style>
 </head>
 <body>
@@ -202,7 +205,7 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10 (學生版)</div>
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.1 (學生版)</div>
         <div class="divider"></div>
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
         <div style="margin-top: 8px;"><label>員工專區</label><div class="admin-row"><input type="password" id="staffPass" placeholder="員工密碼" value=""><button class="btn-small" id="enterStaffBtn">進入員工頁面</button></div></div>
@@ -460,6 +463,7 @@
         <button class="back-btn" id="backToBookingBtn">⟵ 返回預約頁</button>
     </div>
 
+    <!-- 員工專區頁面 (待處理分開，其餘合併) -->
     <div id="staffPage" class="page hidden">
         <div class="staff-header">
             <h3>🧑‍💼 員工工作區</h3>
@@ -474,8 +478,11 @@
             <button class="btn-small" id="staffRefreshBtn">刷新</button>
         </div>
 
-        <h4>📅 待處理預約 (pending) <span class="total-badge" id="pendingCount">0</span></h4>
-        <div class="record-list" id="pendingList"></div>
+        <h4>👨‍🎓 學生待處理預約 <span class="total-badge" id="studentPendingCount">0</span></h4>
+        <div class="record-list" id="studentPendingList"></div>
+
+        <h4>🎫 家長待處理預約 <span class="total-badge" id="parentPendingCount">0</span></h4>
+        <div class="record-list" id="parentPendingList"></div>
 
         <h4>⚙️ 處理中預約 (processing) <span class="total-badge" id="processingCount">0</span></h4>
         <div class="record-list" id="processingList"></div>
@@ -1620,39 +1627,67 @@
 
         await autoMarkNoShow();
 
-        const pending = bookings.filter(b => b.date === dateStr && b.status === 'pending');
+        const studentPending = bookings.filter(b => b.date === dateStr && b.status === 'pending' && b.type === 'student');
+        const parentPending = bookings.filter(b => b.date === dateStr && b.status === 'pending' && b.type === 'voucher');
         const processing = bookings.filter(b => b.date === dateStr && b.status === 'processing');
         const completed = bookings.filter(b => b.status === 'completed');
         const noshow = bookings.filter(b => b.status === 'no-show');
 
-        document.getElementById('pendingCount').innerText = pending.length;
+        document.getElementById('studentPendingCount').innerText = studentPending.length;
+        document.getElementById('parentPendingCount').innerText = parentPending.length;
         document.getElementById('processingCount').innerText = processing.length;
         document.getElementById('completedCount').innerText = completed.length;
         document.getElementById('noshowCount').innerText = noshow.length;
 
-        const pendingDiv = document.getElementById('pendingList');
-        pendingDiv.innerHTML = '';
-        if (pending.length === 0) pendingDiv.innerHTML = '<div style="padding:10px; text-align:center;">無待處理預約</div>';
+        // 學生待處理列表
+        const studentDiv = document.getElementById('studentPendingList');
+        studentDiv.innerHTML = '';
+        if (studentPending.length === 0) studentDiv.innerHTML = '<div style="padding:10px; text-align:center;">無學生待處理預約</div>';
         else {
-            pending.sort((a,b) => a.time.localeCompare(b.time));
-            pending.forEach(b => {
+            studentPending.sort((a,b) => a.time.localeCompare(b.time));
+            studentPending.forEach(b => {
                 const div = document.createElement('div');
                 div.className = 'record-item';
                 const barberRadios = config.barbers.map((barber, idx) => 
-                    `<label style="margin-right:5px;"><input type="radio" name="barber_${b.id}" value="${barber}"> ${barber}</label>`
+                    `<label style="margin-right:5px;"><input type="radio" name="barber_stu_${b.id}" value="${barber}"> ${barber}</label>`
                 ).join('');
                 div.innerHTML = `
-                    <div class="record-info">⏰ ${b.time}  ${b.school} ${b.class} 學號${b.studentId} ${b.email ? '<br>📧 '+b.email : ''} ${b.type === 'voucher' ? '🎟️優惠券' : ''}</div>
+                    <div class="record-info">⏰ ${b.time}  ${b.school} ${b.class} 學號${b.studentId} ${b.email ? '<br>📧 '+b.email : ''}</div>
                     <div class="barber-selector">${barberRadios}</div>
                     <div class="record-actions">
-                        <button class="btn-small btn-success mark-processing" data-id="${b.id}">✂️開始剪髮</button>
+                        <button class="btn-small btn-success mark-processing" data-id="${b.id}" data-type="student">✂️開始剪髮</button>
                         <button class="btn-small btn-warning mark-noshow" data-id="${b.id}">❌未到達</button>
                     </div>
                 `;
-                pendingDiv.appendChild(div);
+                studentDiv.appendChild(div);
             });
         }
 
+        // 家長待處理列表
+        const parentDiv = document.getElementById('parentPendingList');
+        parentDiv.innerHTML = '';
+        if (parentPending.length === 0) parentDiv.innerHTML = '<div style="padding:10px; text-align:center;">無家長待處理預約</div>';
+        else {
+            parentPending.sort((a,b) => a.time.localeCompare(b.time));
+            parentPending.forEach(b => {
+                const div = document.createElement('div');
+                div.className = 'record-item';
+                const barberRadios = config.barbers.map((barber, idx) => 
+                    `<label style="margin-right:5px;"><input type="radio" name="barber_par_${b.id}" value="${barber}"> ${barber}</label>`
+                ).join('');
+                div.innerHTML = `
+                    <div class="record-info">⏰ ${b.time}  ${b.school} ${b.class} 學號${b.studentId} 🎟️優惠券</div>
+                    <div class="barber-selector">${barberRadios}</div>
+                    <div class="record-actions">
+                        <button class="btn-small btn-success mark-processing" data-id="${b.id}" data-type="voucher">✂️開始剪髮</button>
+                        <button class="btn-small btn-warning mark-noshow" data-id="${b.id}">❌未到達</button>
+                    </div>
+                `;
+                parentDiv.appendChild(div);
+            });
+        }
+
+        // 處理中列表
         const processingDiv = document.getElementById('processingList');
         processingDiv.innerHTML = '';
         if (processing.length === 0) processingDiv.innerHTML = '<div style="padding:10px; text-align:center;">無處理中預約</div>';
@@ -1661,8 +1696,9 @@
             processing.forEach(b => {
                 const div = document.createElement('div');
                 div.className = 'record-item';
+                const typeIcon = b.type === 'voucher' ? '🎟️' : '👨‍🎓';
                 div.innerHTML = `
-                    <div class="record-info">⏰ ${b.time}  ${b.school} ${b.class} 學號${b.studentId} ${b.email ? '<br>📧 '+b.email : ''} 師傅:${b.barber} ${b.type === 'voucher' ? '🎟️優惠券' : ''}</div>
+                    <div class="record-info">⏰ ${b.time}  ${b.school} ${b.class} 學號${b.studentId} ${typeIcon} 師傅:${b.barber}</div>
                     <div class="record-actions">
                         <button class="btn-small btn-success mark-complete-with-voucher" data-id="${b.id}" data-voucher="true">💰買優惠券</button>
                         <button class="btn-small btn-secondary mark-complete-without-voucher" data-id="${b.id}" data-voucher="false">✖️未買券</button>
@@ -1717,6 +1753,7 @@
             if (config.showInRecords.studentId) info += ` 學號${b.studentId || ''}`;
             if (config.showInRecords.barber && b.barber) info += ` 師傅:${b.barber}`;
             if (config.showInRecords.email && b.email) info += ` 📧${b.email}`;
+            const typeIcon = b.type === 'voucher' ? '🎟️' : '👨‍🎓';
             const voucherIcon = b.voucherPurchased ? '✅' : '❌';
 
             let actions = '';
@@ -1726,7 +1763,7 @@
             if (staffEditMode || staffCanEditDefault) {
                 actions += `<button class="btn-small delete-record" data-id="${b.id}">🗑️刪除</button>`;
             }
-            html += `<div class="record-item"><div class="record-info">${info}</div><div style="min-width:30px;">${voucherIcon}</div><div class="record-actions">${actions}</div></div>`;
+            html += `<div class="record-item"><div class="record-info">${typeIcon} ${info}</div><div style="min-width:30px;">${voucherIcon}</div><div class="record-actions">${actions}</div></div>`;
         });
         container.innerHTML = html || '<div style="padding:10px; text-align:center;">無記錄</div>';
     }
@@ -1814,7 +1851,9 @@
 
         if (e.target.classList.contains('mark-processing')) {
             const id = e.target.dataset.id;
-            const barberSelected = document.querySelector(`input[name="barber_${id}"]:checked`);
+            const type = e.target.dataset.type;
+            const selector = type === 'student' ? `input[name="barber_stu_${id}"]:checked` : `input[name="barber_par_${id}"]:checked`;
+            const barberSelected = document.querySelector(selector);
             if (!barberSelected) {
                 alert('請選擇一位師傅');
                 return;
