@@ -110,7 +110,7 @@
         <div class="section-block">
             <h3><i class="fa-regular fa-circle-check" style="color:#28a745;"></i> 已完成預約 <span class="total-badge" id="completedCount">0</span></h3>
             <div class="record-list" id="completedList" style="max-height:400px;">
-                <div class="list-header"><span>完成時間</span><span>學校</span><span>班級</span><span>學號</span><span>師傅</span><span>券</span><span>操作</span></div>
+                <div class="list-header"><span>更新時間</span><span>學校</span><span>班級</span><span>學號</span><span>師傅</span><span>券</span><span>操作</span></div>
                 <div id="completedItems"></div>
             </div>
         </div>
@@ -118,7 +118,7 @@
         <div class="section-block">
             <h3><i class="fa-regular fa-circle-xmark" style="color:#dc3545;"></i> 未到達預約 <span class="total-badge" id="noshowCount">0</span></h3>
             <div class="record-list" id="noshowList" style="max-height:400px;">
-                <div class="list-header"><span>標記時間</span><span>學校</span><span>班級</span><span>學號</span><span>師傅</span><span>券</span><span>操作</span></div>
+                <div class="list-header"><span>更新時間</span><span>學校</span><span>班級</span><span>學號</span><span>師傅</span><span>券</span><span>操作</span></div>
                 <div id="noshowItems"></div>
             </div>
         </div>
@@ -131,7 +131,7 @@
                 <div class="summary-card"><div class="number" id="totalVouchers">0</div><div class="label">已買優惠券</div></div>
             </div>
         </div>
-        <div class="footer">@vison 1.4 員工平板版 | 按完成次序排列</div>
+        <div class="footer">@vison 1.5 員工平板版 | 按最後更新時間排序</div>
     </div>
 
 <script>
@@ -194,7 +194,6 @@
         letterNames: ['A','B','C','D','E','F','G','H'], 
         limits: {} 
     };
-    // 不再使用 staffCompletedSort 和 staffNoshowSort，改為自定義排序
 
     function getTodayStr() { const d = new Date(); return d.toISOString().slice(0,10); }
 
@@ -350,10 +349,10 @@
             });
         }
 
-        // 已完成預約 - 按完成時間排序（最新的在上）
+        // 已完成預約 - 按最後更新時間排序（最新的在上）
         renderCompletedList(completed);
         
-        // 未到達預約 - 按未到達時間排序（最新的在上）
+        // 未到達預約 - 按最後更新時間排序（最新的在上）
         renderNoshowList(noshow);
         
         loadStats();
@@ -363,10 +362,10 @@
         const container = document.getElementById('completedItems');
         if (!container) return;
         
-        // 按 completedAt 時間排序，最新的在上
+        // 按 updatedAt 時間排序，最新的在上
         const sorted = items.sort((a, b) => {
-            const aTime = a.completedAt || '';
-            const bTime = b.completedAt || '';
+            const aTime = a.updatedAt || a.completedAt || '';
+            const bTime = b.updatedAt || b.completedAt || '';
             return bTime.localeCompare(aTime); // 降序，最新的在上
         });
 
@@ -375,13 +374,14 @@
             const typeIcon = b.type === 'voucher' ? '🎟️' : '👨‍🎓';
             const voucherIcon = b.voucherPurchased ? '✅' : '❌';
             
-            // 格式化完成時間顯示
-            let completeTimeStr = '';
-            if (b.completedAt) {
-                const date = new Date(b.completedAt);
-                completeTimeStr = date.toLocaleTimeString('zh-HK', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            // 格式化更新時間顯示
+            let updateTimeStr = '';
+            const updateTime = b.updatedAt || b.completedAt;
+            if (updateTime) {
+                const date = new Date(updateTime);
+                updateTimeStr = date.toLocaleTimeString('zh-HK', { hour12: false, hour: '2-digit', minute: '2-digit' });
             } else {
-                completeTimeStr = '未知';
+                updateTimeStr = '--:--';
             }
             
             let actions = '';
@@ -390,7 +390,7 @@
             
             html += `<div class="record-item">
                 <div class="record-info">
-                    ${typeIcon} <strong>${completeTimeStr}</strong> ${b.time || ''}<br>
+                    ${typeIcon} <strong>${updateTimeStr}</strong> (預約 ${b.time || ''})<br>
                     🏫 ${b.school||''} ${b.class||''} 學號${b.studentId||''}<br>
                     ✂️ ${b.barber||'-'}
                 </div>
@@ -405,10 +405,10 @@
         const container = document.getElementById('noshowItems');
         if (!container) return;
         
-        // 按 noShowAt 時間排序，最新的在上
+        // 按 updatedAt 時間排序，最新的在上
         const sorted = items.sort((a, b) => {
-            const aTime = a.noShowAt || '';
-            const bTime = b.noShowAt || '';
+            const aTime = a.updatedAt || a.noShowAt || '';
+            const bTime = b.updatedAt || b.noShowAt || '';
             return bTime.localeCompare(aTime); // 降序，最新的在上
         });
 
@@ -417,13 +417,14 @@
             const typeIcon = b.type === 'voucher' ? '🎟️' : '👨‍🎓';
             const voucherIcon = b.voucherPurchased ? '✅' : '❌';
             
-            // 格式化未到達時間顯示
-            let noShowTimeStr = '';
-            if (b.noShowAt) {
-                const date = new Date(b.noShowAt);
-                noShowTimeStr = date.toLocaleTimeString('zh-HK', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            // 格式化更新時間顯示
+            let updateTimeStr = '';
+            const updateTime = b.updatedAt || b.noShowAt;
+            if (updateTime) {
+                const date = new Date(updateTime);
+                updateTimeStr = date.toLocaleTimeString('zh-HK', { hour12: false, hour: '2-digit', minute: '2-digit' });
             } else {
-                noShowTimeStr = '未知';
+                updateTimeStr = '--:--';
             }
             
             let actions = '';
@@ -431,7 +432,7 @@
             
             html += `<div class="record-item">
                 <div class="record-info">
-                    ${typeIcon} <strong>${noShowTimeStr}</strong> ${b.time || ''}<br>
+                    ${typeIcon} <strong>${updateTimeStr}</strong> (預約 ${b.time || ''})<br>
                     🏫 ${b.school||''} ${b.class||''} 學號${b.studentId||''}<br>
                     ✂️ ${b.barber||'-'}
                 </div>
@@ -466,7 +467,13 @@
 
     async function updateBookingStatus(id, status, fields = {}) { 
         try { 
-            await db.collection("appointments").doc(id).update({ status, ...fields }); 
+            // 每次更新狀態都記錄更新時間
+            const updateFields = { 
+                status, 
+                updatedAt: new Date().toISOString(),
+                ...fields 
+            };
+            await db.collection("appointments").doc(id).update(updateFields); 
             return true; 
         } catch(e){ 
             console.error(e); 
@@ -605,7 +612,8 @@
                 status: 'completed', 
                 type, 
                 voucherPurchased: false, 
-                completedAt: now.toISOString(), 
+                completedAt: now.toISOString(),
+                updatedAt: now.toISOString(),
                 source: 'walkin'
             });
             await fetchAllBookings(); 
