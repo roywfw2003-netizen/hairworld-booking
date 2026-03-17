@@ -125,7 +125,7 @@
                 <div class="summary-card"><div class="number" id="totalVouchers">0</div><div class="label">已買優惠券</div></div>
             </div>
         </div>
-        <div class="footer">@vison 1.0 員工平板版 | 數據即時更新</div>
+        <div class="footer">@vison 1.1 員工平板版 | 最新資料顯示在最上面</div>
     </div>
 
 <script>
@@ -144,9 +144,18 @@
     auth.signInAnonymously().catch(console.error);
 
     let bookings = [];
-    let config = { barbers: ['師傅A', '師傅B', '師傅C', '師傅D'], gradeNames: ['小一', '小二', '小三', '小四', '小五', '小六'], letterNames: ['A','B','C','D','E','F','G','H'], limits: {} };
-    let staffCompletedSort = { field: 'time', dir: 'asc' };
-    let staffNoshowSort = { field: 'time', dir: 'asc' };
+    let config = { 
+        School: [
+            { name: '中學', short: '中', enabled: true },
+            { name: '小學', short: '小', enabled: true }
+        ],
+        barbers: ['師傅A', '師傅B', '師傅C', '師傅D'], 
+        gradeNames: ['小一', '小二', '小三', '小四', '小五', '小六'], 
+        letterNames: ['A','B','C','D','E','F','G','H'], 
+        limits: {} 
+    };
+    let staffCompletedSort = { field: 'time', dir: 'desc' }; // 改為降序，最新的在上
+    let staffNoshowSort = { field: 'time', dir: 'desc' }; // 改為降序
 
     function getTodayStr() { const d = new Date(); return d.toISOString().slice(0,10); }
 
@@ -171,10 +180,13 @@
             const doc = await db.collection("config").doc("settings").get();
             if (doc.exists) {
                 const data = doc.data();
+                Object.assign(config, data);
                 if (data.barbers) config.barbers = data.barbers;
                 if (data.gradeNames) config.gradeNames = data.gradeNames;
                 if (data.letterNames) config.letterNames = data.letterNames;
                 if (data.limits) config.limits = data.limits;
+                if (data.School) config.School = data.School;
+                
                 // 更新師傅下拉選單
                 const barberSelect = document.getElementById('staffBarber');
                 if (barberSelect) {
@@ -184,6 +196,20 @@
                         opt.value = b;
                         opt.textContent = b;
                         barberSelect.appendChild(opt);
+                    });
+                }
+                
+                // 更新學校下拉選單
+                const schoolSelect = document.getElementById('staffSchool');
+                if (schoolSelect) {
+                    schoolSelect.innerHTML = '<option value="">請選擇學校</option>';
+                    (config.School || []).forEach(school => {
+                        if (school.enabled) {
+                            const opt = document.createElement('option');
+                            opt.value = school.name;
+                            opt.textContent = school.name;
+                            schoolSelect.appendChild(opt);
+                        }
                     });
                 }
             }
@@ -231,7 +257,7 @@
         studentDiv.innerHTML = '';
         if (studentPending.length === 0) studentDiv.innerHTML = '<div style="padding:30px; text-align:center;">無學生待處理預約</div>';
         else {
-            studentPending.sort((a,b)=>a.time.localeCompare(b.time));
+            studentPending.sort((a,b) => a.time.localeCompare(b.time));
             studentPending.forEach(b => {
                 const div = document.createElement('div'); div.className = 'record-item';
                 const barberRadios = config.barbers.map(barber => `<label><input type="radio" name="barber_stu_${b.id}" value="${barber}"> ${barber}</label>`).join('');
@@ -246,12 +272,12 @@
             });
         }
 
-        // 家長待處理 - 直接改為已完成按鈕
+        // 家長待處理
         const parentDiv = document.getElementById('parentPendingList');
         parentDiv.innerHTML = '';
         if (parentPending.length === 0) parentDiv.innerHTML = '<div style="padding:30px; text-align:center;">無家長待處理預約</div>';
         else {
-            parentPending.sort((a,b)=>a.time.localeCompare(b.time));
+            parentPending.sort((a,b) => a.time.localeCompare(b.time));
             parentPending.forEach(b => {
                 const div = document.createElement('div'); div.className = 'record-item';
                 const barberRadios = config.barbers.map(barber => `<label><input type="radio" name="barber_par_${b.id}" value="${barber}"> ${barber}</label>`).join('');
@@ -271,7 +297,7 @@
         processingDiv.innerHTML = '';
         if (processing.length === 0) processingDiv.innerHTML = '<div style="padding:30px; text-align:center;">無處理中預約</div>';
         else {
-            processing.sort((a,b)=>a.time.localeCompare(b.time));
+            processing.sort((a,b) => a.time.localeCompare(b.time));
             processing.forEach(b => {
                 const div = document.createElement('div'); div.className = 'record-item';
                 const typeIcon = b.type === 'voucher' ? '🎟️' : '👨‍🎓';
@@ -293,7 +319,29 @@
     function renderStaffList(type, items, sortState, showRevert) {
         const container = document.getElementById(type === 'completed' ? 'completedItems' : 'noshowItems');
         if (!container) return;
-        const sorted = items.sort((a,b)=>{ let av = a[sortState.field]||'', bv = b[sortState.field]||''; if(sortState.field==='time'){ av=a.time||''; bv=b.time||''; } return sortState.dir==='asc'? av<bv?-1:av>bv?1:0 : av>bv?-1:av<bv?1:0; });
+        
+        // 排序：如果 dir 是 'desc'，則最新的在上（時間較大的在前）
+        const sorted = items.sort((a, b) => {
+            let aVal = a[sortState.field] || '';
+            let bVal = b[sortState.field] || '';
+            if (sortState.field === 'time') {
+                aVal = a.time || '';
+                bVal = b.time || '';
+            } else if (sortState.field === 'school') {
+                aVal = a.school || '';
+                bVal = b.school || '';
+            } else if (sortState.field === 'class') {
+                aVal = a.class || '';
+                bVal = b.class || '';
+            } else if (sortState.field === 'studentId') {
+                aVal = a.studentId || '';
+            } else if (sortState.field === 'barber') {
+                aVal = a.barber || '';
+            }
+            if (sortState.dir === 'asc') return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+            else return aVal > bVal ? -1 : aVal < bVal ? 1 : 0; // desc 最新的在上
+        });
+
         let html = '';
         sorted.forEach(b => {
             const typeIcon = b.type === 'voucher' ? '🎟️' : '👨‍🎓';
@@ -409,10 +457,11 @@
         await auth.signInAnonymously();
         await fetchConfig();
         await fetchAllBookings();
-        const staffSchool = document.getElementById('staffSchool');
-        ['中學','小學'].forEach(n => { let o = document.createElement('option'); o.value=n; o.textContent=n; staffSchool.appendChild(o); });
+        
+        // 年級下拉選單
         const staffGrade = document.getElementById('staffGradeSelect');
         config.gradeNames.forEach(g => { let o = document.createElement('option'); o.value=g; o.textContent=g; staffGrade.appendChild(o); });
+        
         document.getElementById('staffGradeSelect').addEventListener('change', staffUpdateLetterSelect);
         document.getElementById('staffLetterSelect').addEventListener('change', staffUpdateStudentIdSelect);
         document.getElementById('staffDatePicker').value = getTodayStr();
