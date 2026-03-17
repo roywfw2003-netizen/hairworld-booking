@@ -59,11 +59,17 @@
         .footer { margin-top: 40px; text-align: center; color: #aaa; font-size: 1rem; }
         @media (max-width: 768px) { .pending-row { flex-direction: column; } .staff-container { padding: 15px; } h1 { font-size: 1.8rem; } .date-bar { flex-wrap: wrap; } }
         select, input { font-size: 1.1rem; padding: 12px; border-radius: 40px; border: 2px solid #FFB985; }
+        .password-toast { position: fixed; top: 20px; right: 20px; background: #333; color: white; padding: 15px 25px; border-radius: 50px; font-size: 1.1rem; z-index: 9999; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .password-toast.success { background: #28a745; }
+        .password-toast.error { background: #dc3545; }
     </style>
 </head>
 <body>
     <div class="staff-container">
         <h1><i class="fa-solid fa-scissors"></i> Hair World 員工工作區 <span style="font-size:1rem; margin-left:auto; color:#aaa;">平板優化版</span></h1>
+        
+        <!-- 密碼提示浮層 -->
+        <div id="passwordToast" class="password-toast"></div>
         
         <div class="date-bar">
             <label for="staffDatePicker"><i class="fa-regular fa-calendar"></i> 日期：</label>
@@ -125,7 +131,7 @@
                 <div class="summary-card"><div class="number" id="totalVouchers">0</div><div class="label">已買優惠券</div></div>
             </div>
         </div>
-        <div class="footer">@vison 1.1 員工平板版 | 最新資料顯示在最上面</div>
+        <div class="footer">@vison 1.2 員工平板版 | 密碼保護模式 (3分鐘有效)</div>
     </div>
 
 <script>
@@ -143,6 +149,40 @@
     const auth = firebase.auth();
     auth.signInAnonymously().catch(console.error);
 
+    // ========== 密碼設定 ==========
+    const EDIT_PASSWORD = "edit123";  // 可自行修改此密碼
+    let passwordLastVerified = 0;      // 最後一次驗證密碼的時間戳
+    const PASSWORD_VALID_DURATION = 3 * 60 * 1000; // 3分鐘有效期
+
+    // 顯示提示浮層
+    function showToast(message, isSuccess = true) {
+        const toast = document.getElementById('passwordToast');
+        toast.textContent = message;
+        toast.className = 'password-toast ' + (isSuccess ? 'success' : 'error');
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    }
+
+    // 檢查是否需要輸入密碼
+    async function checkPassword() {
+        const now = Date.now();
+        // 如果在有效期內，直接通過
+        if (now - passwordLastVerified < PASSWORD_VALID_DURATION) {
+            return true;
+        }
+        
+        // 否則彈出密碼輸入框
+        const inputPass = prompt('請輸入編輯密碼 (3分鐘有效)');
+        if (inputPass === EDIT_PASSWORD) {
+            passwordLastVerified = now;
+            showToast('✓ 密碼正確，3分鐘內可操作', true);
+            return true;
+        } else {
+            showToast('✗ 密碼錯誤', false);
+            return false;
+        }
+    }
+
     let bookings = [];
     let config = { 
         School: [
@@ -154,8 +194,8 @@
         letterNames: ['A','B','C','D','E','F','G','H'], 
         limits: {} 
     };
-    let staffCompletedSort = { field: 'time', dir: 'desc' }; // 改為降序，最新的在上
-    let staffNoshowSort = { field: 'time', dir: 'desc' }; // 改為降序
+    let staffCompletedSort = { field: 'time', dir: 'desc' };
+    let staffNoshowSort = { field: 'time', dir: 'desc' };
 
     function getTodayStr() { const d = new Date(); return d.toISOString().slice(0,10); }
 
@@ -320,7 +360,6 @@
         const container = document.getElementById(type === 'completed' ? 'completedItems' : 'noshowItems');
         if (!container) return;
         
-        // 排序：如果 dir 是 'desc'，則最新的在上（時間較大的在前）
         const sorted = items.sort((a, b) => {
             let aVal = a[sortState.field] || '';
             let bVal = b[sortState.field] || '';
@@ -339,7 +378,7 @@
                 aVal = a.barber || '';
             }
             if (sortState.dir === 'asc') return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-            else return aVal > bVal ? -1 : aVal < bVal ? 1 : 0; // desc 最新的在上
+            else return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
         });
 
         let html = '';
@@ -381,6 +420,13 @@
 
     document.addEventListener('click', async function(e) {
         const date = document.getElementById('staffDatePicker').value;
+        
+        // 處理中、已完成、未到達的操作需要密碼
+        if (e.target.classList.contains('revert-complete') || 
+            e.target.classList.contains('delete-record')) {
+            if (!await checkPassword()) return;
+        }
+        
         if (e.target.classList.contains('mark-processing')) {
             const id = e.target.dataset.id; const type = e.target.dataset.type;
             const selector = type === 'student' ? `input[name="barber_stu_${id}"]:checked` : `input[name="barber_par_${id}"]:checked`;
@@ -421,7 +467,6 @@
             await fetchAllBookings(); renderStaffPage(date);
         }
         if (e.target.classList.contains('delete-record')) {
-            if (!confirm('確定刪除？')) return;
             await deleteBookingById(e.target.dataset.id);
             await fetchAllBookings(); renderStaffPage(date);
         }
@@ -458,7 +503,6 @@
         await fetchConfig();
         await fetchAllBookings();
         
-        // 年級下拉選單
         const staffGrade = document.getElementById('staffGradeSelect');
         config.gradeNames.forEach(g => { let o = document.createElement('option'); o.value=g; o.textContent=g; staffGrade.appendChild(o); });
         
