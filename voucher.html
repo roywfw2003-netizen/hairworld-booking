@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 家長優惠券預約 (v10.1)</title>
+    <title>Hair World 家長優惠券預約 (v11)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -105,10 +105,9 @@
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
         
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.1 (家長版)</div>
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.2 家長版 (禁止重複)</div>
         <div class="divider"></div>
         
-        <!-- 管理員和員工入口直接指向學生版的頁面 -->
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
         <div style="margin-top: 8px;"><label>員工專區</label><div class="admin-row"><input type="password" id="staffPass" placeholder="員工密碼" value=""><button class="btn-small" id="enterStaffBtn">進入員工頁面</button></div></div>
     </div>
@@ -116,7 +115,7 @@
 
 <script>
 (function() {
-    // 家長版專用：直接跳轉到學生版的管理員和員工頁面
+    // 跳轉到學生版的管理員和員工頁面
     document.getElementById('viewCalendarBtn').addEventListener('click', function() {
         const pass = document.getElementById('adminPass').value;
         window.location.href = 'index.html?admin=' + encodeURIComponent(pass);
@@ -200,18 +199,18 @@
         }
     }
 
-    async function fetchParentBookings() {
+    async function fetchAllBookings() {
         try {
-            const snap = await db.collection("appointments").where("type", "==", "voucher").get();
-            parentBookings = [];
+            const snap = await db.collection("appointments").get();
+            bookings = [];
             snap.forEach(doc => {
                 let d = doc.data();
                 d.id = doc.id;
                 if (d.date && d.date.includes('T')) d.date = d.date.split('T')[0];
                 if (!d.status) d.status = 'pending';
-                parentBookings.push(d);
+                bookings.push(d);
             });
-            bookings = parentBookings;
+            parentBookings = bookings.filter(b => b.type === 'voucher');
         } catch (error) {
             console.error('讀取預約失敗', error);
         }
@@ -413,8 +412,23 @@
         if (!confirmTerms || !confirmCard) { showFeedback('請確認兩個核取方塊', true); return; }
         if (!captchaValid) { showFeedback('驗證碼錯誤', true); return; }
 
-        await fetchParentBookings();
-        if (bookings.some(b => b.date===date && b.time===time && b.status==='pending')) {
+        await fetchAllBookings();
+
+        // 【新增】檢查是否已有相同學生的待處理預約
+        const className = grade + letter;
+        const existing = bookings.find(b => 
+            b.school === school && 
+            b.class === className && 
+            b.studentId == sid && 
+            b.status === 'pending' && 
+            b.type === 'voucher'
+        );
+        if (existing) {
+            showFeedback('您已經有一個有效預約，無法重複預約', true);
+            return;
+        }
+
+        if (bookings.some(b => b.date === date && b.time === time && b.status === 'pending')) {
             showFeedback('此時間段已被預約，請重新選擇', true);
             renderTimeSlots(date);
             return;
@@ -423,7 +437,6 @@
         submitting = true;
         document.getElementById('submitBooking').disabled = true;
 
-        const className = grade + letter;
         const result = await createBooking({ school, class: className, studentId: sid, date, time });
         if (result.success && result.pending) {
             showFeedback('⏳ 系統處理中，請稍候約5秒...', false);
@@ -433,7 +446,7 @@
                 if (cr.status === 'reviewed') {
                     if (cr.result === 'success') {
                         showFeedback('✅ 預約成功！', false);
-                        await fetchParentBookings();
+                        await fetchAllBookings();
                         renderCalendar();
                         document.getElementById('studentInfoArea').style.display = 'block';
                         document.getElementById('studentInfoContent').innerHTML = `<p>📅 ${date} ${time}</p><p>🏫 ${school} ${className} 學號${sid}</p><p style="color:#28a745;">✅ 預約成功</p>`;
@@ -485,7 +498,7 @@
         }
 
         bookings = bookings.filter(b => b.id !== canceled.id);
-        await fetchParentBookings();
+        await fetchAllBookings();
 
         currentSelectedDate = getTomorrowStr();
         renderTimeSlots(currentSelectedDate);
@@ -523,7 +536,7 @@
     async function init() {
         await auth.signInAnonymously();
         await fetchConfig();
-        await fetchParentBookings();
+        await fetchAllBookings();
 
         document.getElementById('screenshotLabel').textContent = config.parentScreenshotLabel;
         document.getElementById('voucherCardLabel').textContent = config.parentCardLabel;
