@@ -8,480 +8,128 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-    <!-- Chart.js 輕量圖表 -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
-        body {
-            background-color: #FFF5E6;
-            padding: 20px;
-            min-height: 100vh;
-        }
-        .staff-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
-            border-radius: 40px;
-            box-shadow: 0 10px 40px rgba(247, 147, 49, 0.2);
-            padding: 30px;
-            border: 1px solid #FFD8B2;
-        }
-        h1 {
-            color: #F25C0A;
-            font-size: 2.2rem;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        h1 i {
-            font-size: 2.5rem;
-        }
-        h2 {
-            color: #B04400;
-            font-size: 1.8rem;
-            margin: 25px 0 15px 0;
-            border-bottom: 2px solid #FFB985;
-            padding-bottom: 8px;
-        }
-        h3 {
-            color: #F25C0A;
-            font-size: 1.5rem;
-            margin: 15px 0 10px 0;
-        }
-        .date-bar {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            margin-bottom: 30px;
-            background: #FFF2E3;
-            padding: 20px;
-            border-radius: 60px;
-            border: 1px solid #FFB985;
-        }
-        .date-bar label {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #77450E;
-        }
-        .date-bar input[type="date"] {
-            flex: 1;
-            padding: 15px 20px;
-            border: 2px solid #FFCDA5;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            background: white;
-        }
-        .date-bar button {
-            background: #F25C0A;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 5px 0 #B04400;
-            transition: 0.1s;
-            min-width: 120px;
-        }
-        .date-bar button:active {
-            transform: translateY(4px);
-            box-shadow: 0 1px 0 #B04400;
-        }
-        
-        /* 雙欄布局 */
-        .pending-row {
-            display: flex;
-            gap: 30px;
-            margin-bottom: 40px;
-        }
-        .pending-col {
-            flex: 1;
-            background: #FFF9F2;
-            border-radius: 30px;
-            padding: 20px;
-            border: 2px solid #FFB985;
-        }
-        .pending-col h3 {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.6rem;
-            margin-top: 0;
-            margin-bottom: 20px;
-        }
-        .record-list {
-            max-height: 500px;
-            overflow-y: auto;
-            border: 1px solid #FFB985;
-            border-radius: 25px;
-            background: white;
-            padding: 10px;
-        }
-        .record-item {
-            background: #FFF9F2;
-            border-radius: 25px;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-left: 8px solid #F25C0A;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 15px;
-        }
-        .record-info {
-            flex: 2;
-            min-width: 250px;
-            font-size: 1.2rem;
-            line-height: 1.6;
-        }
-        .record-info strong {
-            color: #F25C0A;
-            font-size: 1.3rem;
-        }
-        .barber-selector {
-            flex: 1;
-            min-width: 200px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            background: #FFE6D3;
-            padding: 15px;
-            border-radius: 40px;
-        }
-        .barber-selector label {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 1.1rem;
-            background: white;
-            padding: 8px 15px;
-            border-radius: 40px;
-            border: 1px solid #FFB985;
-        }
-        .barber-selector input[type="radio"] {
-            width: 20px;
-            height: 20px;
-            accent-color: #F25C0A;
-        }
-        .record-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .btn {
-            border: none;
-            padding: 15px 25px;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
-            transition: 0.1s;
-            min-width: 120px;
-        }
-        .btn:active {
-            transform: translateY(4px);
-            box-shadow: none;
-        }
-        .btn-success {
-            background: #28a745;
-            color: white;
-            box-shadow: 0 4px 0 #1e7e34;
-        }
-        .btn-warning {
-            background: #ffc107;
-            color: #333;
-            box-shadow: 0 4px 0 #d39e00;
-        }
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-            box-shadow: 0 4px 0 #545b62;
-        }
-        .btn-info {
-            background: #17a2b8;
-            color: white;
-            box-shadow: 0 4px 0 #117a8b;
-        }
-        .badge {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 40px;
-            font-size: 1rem;
-            font-weight: 600;
-            margin-left: 10px;
-        }
-        .badge-student {
-            background: #F25C0A;
-            color: white;
-        }
-        .badge-voucher {
-            background: #28a745;
-            color: white;
-        }
-        .total-badge {
-            background: #F25C0A;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 40px;
-            font-size: 1.2rem;
-            margin-left: 15px;
-        }
-        
-        /* 統計報表區塊 (無密碼) */
-        .stats-container {
-            margin-top: 50px;
-            padding: 30px;
-            background: white;
-            border-radius: 40px;
-            border: 3px solid #F25C0A;
-        }
-        .stats-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        .stats-header h2 {
-            border: none;
-            margin: 0;
-            font-size: 2rem;
-        }
-        .chart-container {
-            height: 400px;
-            margin-bottom: 30px;
-        }
-        .stats-summary {
-            display: flex;
-            gap: 30px;
-            justify-content: center;
-        }
-        .summary-card {
-            background: #FFF2E3;
-            padding: 25px 40px;
-            border-radius: 30px;
-            text-align: center;
-            flex: 1;
-        }
-        .summary-card .number {
-            font-size: 3rem;
-            font-weight: bold;
-            color: #F25C0A;
-        }
-        .summary-card .label {
-            font-size: 1.4rem;
-            color: #B04400;
-        }
-        
-        /* 其他列表 */
-        .section-block {
-            background: #FFF9F2;
-            border-radius: 30px;
-            padding: 25px;
-            margin-bottom: 40px;
-            border: 2px solid #FFB985;
-        }
-        .list-header {
-            display: flex;
-            font-weight: bold;
-            font-size: 1.2rem;
-            padding: 15px 0;
-            border-bottom: 2px solid #FFB985;
-            margin-bottom: 15px;
-            color: #B04400;
-        }
-        .list-header span {
-            flex: 1;
-        }
-        .footer {
-            margin-top: 40px;
-            text-align: center;
-            color: #aaa;
-            font-size: 1rem;
-        }
-        @media (max-width: 768px) {
-            .pending-row {
-                flex-direction: column;
-            }
-            .staff-container {
-                padding: 15px;
-            }
-            h1 { font-size: 1.8rem; }
-            .date-bar { flex-wrap: wrap; }
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #FFF5E6; padding: 20px; min-height: 100vh; }
+        .staff-container { max-width: 1200px; margin: 0 auto; background-color: white; border-radius: 40px; box-shadow: 0 10px 40px rgba(247, 147, 49, 0.2); padding: 30px; border: 1px solid #FFD8B2; }
+        h1 { color: #F25C0A; font-size: 2.2rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        h2 { color: #B04400; font-size: 1.8rem; margin: 25px 0 15px 0; border-bottom: 2px solid #FFB985; padding-bottom: 8px; }
+        h3 { color: #F25C0A; font-size: 1.5rem; margin: 15px 0 10px 0; }
+        .date-bar { display: flex; gap: 15px; align-items: center; margin-bottom: 30px; background: #FFF2E3; padding: 20px; border-radius: 60px; border: 1px solid #FFB985; }
+        .date-bar label { font-size: 1.3rem; font-weight: 600; color: #77450E; }
+        .date-bar input[type="date"] { flex: 1; padding: 15px 20px; border: 2px solid #FFCDA5; border-radius: 50px; font-size: 1.2rem; background: white; }
+        .date-bar button { background: #F25C0A; color: white; border: none; padding: 15px 30px; border-radius: 50px; font-size: 1.2rem; font-weight: 600; cursor: pointer; box-shadow: 0 5px 0 #B04400; transition: 0.1s; min-width: 120px; }
+        .date-bar button:active { transform: translateY(4px); box-shadow: 0 1px 0 #B04400; }
+        .pending-row { display: flex; gap: 30px; margin-bottom: 40px; }
+        .pending-col { flex: 1; background: #FFF9F2; border-radius: 30px; padding: 20px; border: 2px solid #FFB985; }
+        .pending-col h3 { display: flex; align-items: center; gap: 10px; font-size: 1.6rem; margin-top: 0; margin-bottom: 20px; }
+        .record-list { max-height: 500px; overflow-y: auto; border: 1px solid #FFB985; border-radius: 25px; background: white; padding: 10px; }
+        .record-item { background: #FFF9F2; border-radius: 25px; padding: 20px; margin-bottom: 15px; border-left: 8px solid #F25C0A; display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
+        .record-info { flex: 2; min-width: 250px; font-size: 1.2rem; line-height: 1.6; }
+        .record-info strong { color: #F25C0A; font-size: 1.3rem; }
+        .barber-selector { flex: 1; min-width: 200px; display: flex; flex-wrap: wrap; gap: 10px; background: #FFE6D3; padding: 15px; border-radius: 40px; }
+        .barber-selector label { display: flex; align-items: center; gap: 5px; font-size: 1.1rem; background: white; padding: 8px 15px; border-radius: 40px; border: 1px solid #FFB985; }
+        .barber-selector input[type="radio"] { width: 20px; height: 20px; accent-color: #F25C0A; }
+        .record-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { border: none; padding: 15px 25px; border-radius: 50px; font-size: 1.2rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: 0.1s; min-width: 120px; }
+        .btn:active { transform: translateY(4px); box-shadow: none; }
+        .btn-success { background: #28a745; color: white; box-shadow: 0 4px 0 #1e7e34; }
+        .btn-warning { background: #ffc107; color: #333; box-shadow: 0 4px 0 #d39e00; }
+        .btn-secondary { background: #6c757d; color: white; box-shadow: 0 4px 0 #545b62; }
+        .btn-info { background: #17a2b8; color: white; box-shadow: 0 4px 0 #117a8b; }
+        .badge { display: inline-block; padding: 8px 16px; border-radius: 40px; font-size: 1rem; font-weight: 600; margin-left: 10px; }
+        .badge-student { background: #F25C0A; color: white; }
+        .badge-voucher { background: #28a745; color: white; }
+        .total-badge { background: #F25C0A; color: white; padding: 5px 15px; border-radius: 40px; font-size: 1.2rem; margin-left: 15px; }
+        .stats-container { margin-top: 50px; padding: 30px; background: white; border-radius: 40px; border: 3px solid #F25C0A; }
+        .stats-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .stats-header h2 { border: none; margin: 0; font-size: 2rem; }
+        .chart-container { height: 400px; margin-bottom: 30px; }
+        .stats-summary { display: flex; gap: 30px; justify-content: center; }
+        .summary-card { background: #FFF2E3; padding: 25px 40px; border-radius: 30px; text-align: center; flex: 1; }
+        .summary-card .number { font-size: 3rem; font-weight: bold; color: #F25C0A; }
+        .summary-card .label { font-size: 1.4rem; color: #B04400; }
+        .section-block { background: #FFF9F2; border-radius: 30px; padding: 25px; margin-bottom: 40px; border: 2px solid #FFB985; }
+        .list-header { display: flex; font-weight: bold; font-size: 1.2rem; padding: 15px 0; border-bottom: 2px solid #FFB985; margin-bottom: 15px; color: #B04400; }
+        .list-header span { flex: 1; }
+        .footer { margin-top: 40px; text-align: center; color: #aaa; font-size: 1rem; }
+        @media (max-width: 768px) { .pending-row { flex-direction: column; } .staff-container { padding: 15px; } h1 { font-size: 1.8rem; } .date-bar { flex-wrap: wrap; } }
+        select, input { font-size: 1.1rem; padding: 12px; border-radius: 40px; border: 2px solid #FFB985; }
     </style>
 </head>
 <body>
     <div class="staff-container">
-        <h1>
-            <i class="fa-solid fa-scissors"></i>
-            Hair World 員工工作區
-            <span style="font-size:1rem; margin-left:auto; color:#aaa;">平板優化版</span>
-        </h1>
+        <h1><i class="fa-solid fa-scissors"></i> Hair World 員工工作區 <span style="font-size:1rem; margin-left:auto; color:#aaa;">平板優化版</span></h1>
         
-        <!-- 日期選擇列 -->
         <div class="date-bar">
             <label for="staffDatePicker"><i class="fa-regular fa-calendar"></i> 日期：</label>
             <input type="date" id="staffDatePicker" value="">
             <button id="staffRefreshBtn"><i class="fa-solid fa-rotate-right"></i> 刷新</button>
         </div>
         
-        <!-- 雙欄待處理 -->
         <div class="pending-row">
-            <!-- 學生待處理 -->
             <div class="pending-col">
-                <h3>
-                    <i class="fa-solid fa-user-graduate" style="color:#F25C0A;"></i>
-                    學生待處理
-                    <span class="total-badge" id="studentPendingCount">0</span>
-                </h3>
+                <h3><i class="fa-solid fa-user-graduate" style="color:#F25C0A;"></i> 學生待處理 <span class="total-badge" id="studentPendingCount">0</span></h3>
                 <div class="record-list" id="studentPendingList"></div>
             </div>
-            <!-- 家長待處理 -->
             <div class="pending-col">
-                <h3>
-                    <i class="fa-solid fa-ticket" style="color:#28a745;"></i>
-                    家長待處理
-                    <span class="total-badge" id="parentPendingCount">0</span>
-                </h3>
+                <h3><i class="fa-solid fa-ticket" style="color:#28a745;"></i> 家長待處理 <span class="total-badge" id="parentPendingCount">0</span></h3>
                 <div class="record-list" id="parentPendingList"></div>
             </div>
         </div>
         
-        <!-- 處理中預約 -->
         <div class="section-block">
-            <h3>
-                <i class="fa-solid fa-spinner"></i>
-                處理中預約
-                <span class="total-badge" id="processingCount">0</span>
-            </h3>
+            <h3><i class="fa-solid fa-spinner"></i> 處理中預約 <span class="total-badge" id="processingCount">0</span></h3>
             <div class="record-list" id="processingList" style="max-height:400px;"></div>
         </div>
         
-        <!-- 手動登記區塊 -->
         <div class="section-block" style="background:#e6f3ff; border-color:#17a2b8;">
             <h3><i class="fa-solid fa-pen-to-square"></i> 手動登記 (現場/優惠券)</h3>
             <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
-                <div style="flex:1; min-width:150px;">
-                    <label>學校</label>
-                    <select id="staffSchool" style="width:100%; padding:15px; border-radius:40px; border:2px solid #FFB985; font-size:1.1rem;">
-                        <option value="">請選擇</option>
-                    </select>
-                </div>
-                <div style="flex:1; min-width:120px;">
-                    <label>年級</label>
-                    <select id="staffGradeSelect" style="width:100%; padding:15px; border-radius:40px; border:2px solid #FFB985; font-size:1.1rem;">
-                        <option value="">請選擇</option>
-                    </select>
-                </div>
-                <div style="flex:1; min-width:100px;">
-                    <label>班別</label>
-                    <select id="staffLetterSelect" style="width:100%; padding:15px; border-radius:40px; border:2px solid #FFB985; font-size:1.1rem;">
-                        <option value="">請選擇</option>
-                    </select>
-                </div>
-                <div style="flex:1; min-width:100px;">
-                    <label>學號</label>
-                    <select id="staffStudentId" style="width:100%; padding:15px; border-radius:40px; border:2px solid #FFB985; font-size:1.1rem;">
-                        <option value="">請選擇</option>
-                    </select>
-                </div>
-                <div style="flex:1; min-width:200px;">
-                    <label>Email (選填)</label>
-                    <input type="email" id="staffEmail" placeholder="example@mail.com" style="width:100%; padding:15px; border-radius:40px; border:2px solid #FFB985; font-size:1.1rem;">
-                </div>
-                <div style="flex:1; min-width:150px;">
-                    <label>類型</label>
-                    <select id="staffBookingType" style="width:100%; padding:15px; border-radius:40px; border:2px solid #FFB985; font-size:1.1rem;">
-                        <option value="student">學生剪髮</option>
-                        <option value="voucher">優惠券剪髮</option>
-                    </select>
-                </div>
-                <div>
-                    <button class="btn btn-success" id="submitStaffWalkin" style="padding:15px 40px;">✅ 完成登記</button>
-                </div>
+                <div style="flex:1; min-width:150px;"><label>學校</label><select id="staffSchool"><option value="">請選擇</option></select></div>
+                <div style="flex:1; min-width:120px;"><label>年級</label><select id="staffGradeSelect"><option value="">請選擇</option></select></div>
+                <div style="flex:1; min-width:100px;"><label>班別</label><select id="staffLetterSelect"><option value="">請選擇</option></select></div>
+                <div style="flex:1; min-width:100px;"><label>學號</label><select id="staffStudentId"><option value="">請選擇</option></select></div>
+                <div style="flex:1; min-width:200px;"><label>Email (選填)</label><input type="email" id="staffEmail" placeholder="example@mail.com"></div>
+                <div style="flex:1; min-width:150px;"><label>師傅</label><select id="staffBarber"><option value="">請選擇</option></select></div>
+                <div style="flex:1; min-width:150px;"><label>類型</label><select id="staffBookingType"><option value="student">學生剪髮</option><option value="voucher">優惠券剪髮</option></select></div>
+                <div><button class="btn btn-success" id="submitStaffWalkin" style="padding:15px 40px;">✅ 完成登記</button></div>
             </div>
         </div>
         
-        <!-- 已完成預約 -->
         <div class="section-block">
-            <h3>
-                <i class="fa-regular fa-circle-check" style="color:#28a745;"></i>
-                已完成預約
-                <span class="total-badge" id="completedCount">0</span>
-            </h3>
+            <h3><i class="fa-regular fa-circle-check" style="color:#28a745;"></i> 已完成預約 <span class="total-badge" id="completedCount">0</span></h3>
             <div class="record-list" id="completedList" style="max-height:400px;">
-                <div class="list-header">
-                    <span>時間</span>
-                    <span>學校</span>
-                    <span>班級</span>
-                    <span>學號</span>
-                    <span>師傅</span>
-                    <span>券</span>
-                    <span>操作</span>
-                </div>
+                <div class="list-header"><span>時間</span><span>學校</span><span>班級</span><span>學號</span><span>師傅</span><span>券</span><span>操作</span></div>
                 <div id="completedItems"></div>
             </div>
         </div>
         
-        <!-- 未到達預約 -->
         <div class="section-block">
-            <h3>
-                <i class="fa-regular fa-circle-xmark" style="color:#dc3545;"></i>
-                未到達預約
-                <span class="total-badge" id="noshowCount">0</span>
-            </h3>
+            <h3><i class="fa-regular fa-circle-xmark" style="color:#dc3545;"></i> 未到達預約 <span class="total-badge" id="noshowCount">0</span></h3>
             <div class="record-list" id="noshowList" style="max-height:400px;">
-                <div class="list-header">
-                    <span>時間</span>
-                    <span>學校</span>
-                    <span>班級</span>
-                    <span>學號</span>
-                    <span>師傅</span>
-                    <span>券</span>
-                    <span>操作</span>
-                </div>
+                <div class="list-header"><span>時間</span><span>學校</span><span>班級</span><span>學號</span><span>師傅</span><span>券</span><span>操作</span></div>
                 <div id="noshowItems"></div>
             </div>
         </div>
         
-        <!-- 統計報表 (無密碼) -->
         <div class="stats-container">
-            <div class="stats-header">
-                <h2>📊 即時統計報表</h2>
-            </div>
-            <div class="chart-container">
-                <canvas id="barberChart"></canvas>
-            </div>
+            <div class="stats-header"><h2>📊 即時統計報表</h2></div>
+            <div class="chart-container"><canvas id="barberChart"></canvas></div>
             <div class="stats-summary">
-                <div class="summary-card">
-                    <div class="number" id="totalStudents">0</div>
-                    <div class="label">已剪學童</div>
-                </div>
-                <div class="summary-card">
-                    <div class="number" id="totalVouchers">0</div>
-                    <div class="label">已買優惠券</div>
-                </div>
+                <div class="summary-card"><div class="number" id="totalStudents">0</div><div class="label">已剪學童</div></div>
+                <div class="summary-card"><div class="number" id="totalVouchers">0</div><div class="label">已買優惠券</div></div>
             </div>
         </div>
-        
-        <div class="footer">
-            @vison 1.0 員工平板版 | 數據即時更新
-        </div>
+        <div class="footer">@vison 1.0 員工平板版 | 數據即時更新</div>
     </div>
 
 <script>
 (function() {
-    // ========== Firebase 初始化 ==========
     const firebaseConfig = {
         apiKey: "AIzaSyCTgUIWXKjNZqp-bC1jk-XxZvoMihs6vO4",
         authDomain: "hairworld-2026.firebaseapp.com",
@@ -493,47 +141,29 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-
     auth.signInAnonymously().catch(console.error);
 
-    // ========== 全域變數 ==========
     let bookings = [];
-    let config = {
-        barbers: ['師傅A', '師傅B', '師傅C', '師傅D'],
-        gradeNames: ['小一', '小二', '小三', '小四', '小五', '小六'],
-        letterNames: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
-        limits: {}
-    };
+    let config = { barbers: ['師傅A', '師傅B', '師傅C', '師傅D'], gradeNames: ['小一', '小二', '小三', '小四', '小五', '小六'], letterNames: ['A','B','C','D','E','F','G','H'], limits: {} };
     let staffCompletedSort = { field: 'time', dir: 'asc' };
     let staffNoshowSort = { field: 'time', dir: 'asc' };
-    let staffEditMode = false; // 平板版無需編輯模式，但保留變數
 
-    // ========== 工具函數 ==========
-    function getTodayStr() {
-        const d = new Date();
-        return d.toISOString().slice(0,10);
-    }
+    function getTodayStr() { const d = new Date(); return d.toISOString().slice(0,10); }
 
-    // ========== 讀取資料 ==========
     async function fetchAllBookings() {
         try {
             const snapshot = await db.collection("appointments").get();
-            const list = [];
+            bookings = [];
             snapshot.forEach(doc => {
-                let data = doc.data();
-                data.id = doc.id;
-                if (data.date && data.date.includes('T')) {
-                    data.date = data.date.split('T')[0];
-                }
-                if (!data.status) data.status = 'pending';
-                if (!data.type) data.type = 'student';
-                if (!data.voucherPurchased) data.voucherPurchased = false;
-                list.push(data);
+                let d = doc.data();
+                d.id = doc.id;
+                if (d.date && d.date.includes('T')) d.date = d.date.split('T')[0];
+                if (!d.status) d.status = 'pending';
+                if (!d.type) d.type = 'student';
+                if (!d.voucherPurchased) d.voucherPurchased = false;
+                bookings.push(d);
             });
-            bookings = list;
-        } catch (error) {
-            console.error('讀取失敗', error);
-        }
+        } catch (error) { console.error('讀取失敗', error); }
     }
 
     async function fetchConfig() {
@@ -545,64 +175,45 @@
                 if (data.gradeNames) config.gradeNames = data.gradeNames;
                 if (data.letterNames) config.letterNames = data.letterNames;
                 if (data.limits) config.limits = data.limits;
+                // 更新師傅下拉選單
+                const barberSelect = document.getElementById('staffBarber');
+                if (barberSelect) {
+                    barberSelect.innerHTML = '<option value="">請選擇師傅</option>';
+                    config.barbers.forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b;
+                        opt.textContent = b;
+                        barberSelect.appendChild(opt);
+                    });
+                }
             }
-        } catch (error) {
-            console.error('讀取設定失敗', error);
-        }
+        } catch (error) { console.error('讀取設定失敗', error); }
     }
 
-    // ========== 年級連動 (手動登記用) ==========
-    function getGradeNumber(gradeName) {
-        const idx = config.gradeNames.indexOf(gradeName);
-        return idx >= 0 ? (idx + 1).toString() : null;
-    }
-
+    function getGradeNumber(g) { const idx = config.gradeNames.indexOf(g); return idx >= 0 ? (idx+1).toString() : null; }
     function staffUpdateLetterSelect() {
-        const gradeSelect = document.getElementById('staffGradeSelect');
-        const letterSelect = document.getElementById('staffLetterSelect');
-        const gradeName = gradeSelect.value;
-        if (!gradeName) { 
-            letterSelect.innerHTML = '<option value="">請先選擇年級</option>'; 
-            return; 
-        }
-        letterSelect.innerHTML = '<option value="">請選擇班別</option>';
-        config.letterNames.forEach(letter => {
-            const opt = document.createElement('option');
-            opt.value = letter;
-            opt.textContent = letter;
-            letterSelect.appendChild(opt);
-        });
+        const g = document.getElementById('staffGradeSelect').value;
+        const ls = document.getElementById('staffLetterSelect');
+        if (!g) { ls.innerHTML = '<option value="">請先選擇年級</option>'; return; }
+        ls.innerHTML = '<option value="">請選擇班別</option>' + config.letterNames.map(l => `<option value="${l}">${l}</option>`).join('');
         staffUpdateStudentIdSelect();
     }
-
     function staffUpdateStudentIdSelect() {
-        const gradeName = document.getElementById('staffGradeSelect').value;
-        const letter = document.getElementById('staffLetterSelect').value;
-        const studentSelect = document.getElementById('staffStudentId');
-        if (!gradeName || !letter) { 
-            studentSelect.innerHTML = '<option value="">請先選擇年級與班別</option>'; 
-            return; 
-        }
-        const gradeNum = getGradeNumber(gradeName);
-        if (!gradeNum) { 
-            studentSelect.innerHTML = '<option value="">年級錯誤</option>'; 
-            return; 
-        }
-        const className = gradeNum + letter;
-        const limit = config.limits[className] || 25;
-        let options = '<option value="">請選擇學號</option>';
-        for (let i = 1; i <= limit; i++) {
-            options += `<option value="${i}">${i}</option>`;
-        }
-        studentSelect.innerHTML = options;
+        const g = document.getElementById('staffGradeSelect').value;
+        const l = document.getElementById('staffLetterSelect').value;
+        const sid = document.getElementById('staffStudentId');
+        if (!g || !l) { sid.innerHTML = '<option value="">請先選擇年級與班別</option>'; return; }
+        const gn = getGradeNumber(g);
+        if (!gn) return;
+        const cn = gn + l;
+        const limit = config.limits[cn] || 25;
+        sid.innerHTML = '<option value="">請選擇學號</option>' + Array.from({length:limit},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
     }
 
-    // ========== 渲染員工頁面 ==========
     async function renderStaffPage(dateStr) {
         if (!dateStr) dateStr = getTodayStr();
         document.getElementById('staffDatePicker').value = dateStr;
 
-        // 過濾資料
         const studentPending = bookings.filter(b => b.date === dateStr && b.status === 'pending' && b.type === 'student');
         const parentPending = bookings.filter(b => b.date === dateStr && b.status === 'pending' && b.type === 'voucher');
         const processing = bookings.filter(b => b.date === dateStr && b.status === 'processing');
@@ -615,60 +226,42 @@
         document.getElementById('completedCount').innerText = completed.length;
         document.getElementById('noshowCount').innerText = noshow.length;
 
-        // 學生待處理列表
+        // 學生待處理
         const studentDiv = document.getElementById('studentPendingList');
         studentDiv.innerHTML = '';
-        if (studentPending.length === 0) {
-            studentDiv.innerHTML = '<div style="padding:30px; text-align:center; font-size:1.2rem;">無學生待處理預約</div>';
-        } else {
-            studentPending.sort((a,b) => a.time.localeCompare(b.time));
+        if (studentPending.length === 0) studentDiv.innerHTML = '<div style="padding:30px; text-align:center;">無學生待處理預約</div>';
+        else {
+            studentPending.sort((a,b)=>a.time.localeCompare(b.time));
             studentPending.forEach(b => {
-                const div = document.createElement('div');
-                div.className = 'record-item';
-                const barberRadios = config.barbers.map(barber => 
-                    `<label><input type="radio" name="barber_stu_${b.id}" value="${barber}"> ${barber}</label>`
-                ).join('');
+                const div = document.createElement('div'); div.className = 'record-item';
+                const barberRadios = config.barbers.map(barber => `<label><input type="radio" name="barber_stu_${b.id}" value="${barber}"> ${barber}</label>`).join('');
                 div.innerHTML = `
-                    <div class="record-info">
-                        <strong>⏰ ${b.time}</strong><br>
-                        🏫 ${b.school} ${b.class} 學號${b.studentId}<br>
-                        📧 ${b.email || '無'}
-                    </div>
+                    <div class="record-info"><strong>⏰ ${b.time}</strong><br>🏫 ${b.school} ${b.class} 學號${b.studentId}<br>📧 ${b.email || '無'}</div>
                     <div class="barber-selector">${barberRadios}</div>
                     <div class="record-actions">
                         <button class="btn btn-success mark-processing" data-id="${b.id}" data-type="student">✂️開始剪髮</button>
                         <button class="btn btn-warning mark-noshow" data-id="${b.id}">❌未到達</button>
-                    </div>
-                `;
+                    </div>`;
                 studentDiv.appendChild(div);
             });
         }
 
-        // 家長待處理列表
+        // 家長待處理 - 直接改為已完成按鈕
         const parentDiv = document.getElementById('parentPendingList');
         parentDiv.innerHTML = '';
-        if (parentPending.length === 0) {
-            parentDiv.innerHTML = '<div style="padding:30px; text-align:center; font-size:1.2rem;">無家長待處理預約</div>';
-        } else {
-            parentPending.sort((a,b) => a.time.localeCompare(b.time));
+        if (parentPending.length === 0) parentDiv.innerHTML = '<div style="padding:30px; text-align:center;">無家長待處理預約</div>';
+        else {
+            parentPending.sort((a,b)=>a.time.localeCompare(b.time));
             parentPending.forEach(b => {
-                const div = document.createElement('div');
-                div.className = 'record-item';
-                const barberRadios = config.barbers.map(barber => 
-                    `<label><input type="radio" name="barber_par_${b.id}" value="${barber}"> ${barber}</label>`
-                ).join('');
+                const div = document.createElement('div'); div.className = 'record-item';
+                const barberRadios = config.barbers.map(barber => `<label><input type="radio" name="barber_par_${b.id}" value="${barber}"> ${barber}</label>`).join('');
                 div.innerHTML = `
-                    <div class="record-info">
-                        <strong>⏰ ${b.time}</strong><br>
-                        🏫 ${b.school} ${b.class} 學號${b.studentId}<br>
-                        🎟️ 優惠券
-                    </div>
+                    <div class="record-info"><strong>⏰ ${b.time}</strong><br>🏫 ${b.school} ${b.class} 學號${b.studentId}<br>🎟️ 優惠券</div>
                     <div class="barber-selector">${barberRadios}</div>
                     <div class="record-actions">
-                        <button class="btn btn-success mark-processing" data-id="${b.id}" data-type="voucher">✂️開始剪髮</button>
+                        <button class="btn btn-success mark-parent-complete" data-id="${b.id}" data-type="voucher">✅ 已完成</button>
                         <button class="btn btn-warning mark-noshow" data-id="${b.id}">❌未到達</button>
-                    </div>
-                `;
+                    </div>`;
                 parentDiv.appendChild(div);
             });
         }
@@ -676,333 +269,152 @@
         // 處理中列表
         const processingDiv = document.getElementById('processingList');
         processingDiv.innerHTML = '';
-        if (processing.length === 0) {
-            processingDiv.innerHTML = '<div style="padding:30px; text-align:center; font-size:1.2rem;">無處理中預約</div>';
-        } else {
-            processing.sort((a,b) => a.time.localeCompare(b.time));
+        if (processing.length === 0) processingDiv.innerHTML = '<div style="padding:30px; text-align:center;">無處理中預約</div>';
+        else {
+            processing.sort((a,b)=>a.time.localeCompare(b.time));
             processing.forEach(b => {
-                const div = document.createElement('div');
-                div.className = 'record-item';
+                const div = document.createElement('div'); div.className = 'record-item';
                 const typeIcon = b.type === 'voucher' ? '🎟️' : '👨‍🎓';
                 div.innerHTML = `
-                    <div class="record-info">
-                        <strong>⏰ ${b.time}</strong><br>
-                        🏫 ${b.school} ${b.class} 學號${b.studentId} ${typeIcon}<br>
-                        ✂️ 師傅: ${b.barber || '未指派'}
-                    </div>
+                    <div class="record-info"><strong>⏰ ${b.time}</strong><br>🏫 ${b.school} ${b.class} 學號${b.studentId} ${typeIcon}<br>✂️ 師傅: ${b.barber || '未指派'}</div>
                     <div class="record-actions">
                         <button class="btn btn-success mark-complete-with-voucher" data-id="${b.id}" data-voucher="true">💰買優惠券</button>
                         <button class="btn btn-secondary mark-complete-without-voucher" data-id="${b.id}" data-voucher="false">✖️未買券</button>
-                    </div>
-                `;
+                    </div>`;
                 processingDiv.appendChild(div);
             });
         }
 
-        // 已完成列表
         renderStaffList('completed', completed, staffCompletedSort, true);
-        // 未到達列表
         renderStaffList('noshow', noshow, staffNoshowSort, false);
-
-        // 更新統計報表
         loadStats();
     }
 
-    function renderStaffList(type, items, sortState, showRevert = false) {
+    function renderStaffList(type, items, sortState, showRevert) {
         const container = document.getElementById(type === 'completed' ? 'completedItems' : 'noshowItems');
         if (!container) return;
-        
-        const sorted = items.sort((a, b) => {
-            let aVal = a[sortState.field] || '';
-            let bVal = b[sortState.field] || '';
-            if (sortState.field === 'time') {
-                aVal = a.time || '';
-                bVal = b.time || '';
-            } else if (sortState.field === 'school') {
-                aVal = a.school || '';
-                bVal = b.school || '';
-            } else if (sortState.field === 'class') {
-                aVal = a.class || '';
-                bVal = b.class || '';
-            } else if (sortState.field === 'studentId') {
-                aVal = a.studentId || '';
-            } else if (sortState.field === 'barber') {
-                aVal = a.barber || '';
-            }
-            if (sortState.dir === 'asc') return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-            else return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
-        });
-
+        const sorted = items.sort((a,b)=>{ let av = a[sortState.field]||'', bv = b[sortState.field]||''; if(sortState.field==='time'){ av=a.time||''; bv=b.time||''; } return sortState.dir==='asc'? av<bv?-1:av>bv?1:0 : av>bv?-1:av<bv?1:0; });
         let html = '';
         sorted.forEach(b => {
             const typeIcon = b.type === 'voucher' ? '🎟️' : '👨‍🎓';
             const voucherIcon = b.voucherPurchased ? '✅' : '❌';
-            const barberName = b.barber || '-';
-            
             let actions = '';
-            if (showRevert) {
-                actions += `<button class="btn btn-secondary revert-complete" data-id="${b.id}" style="padding:10px 20px; font-size:1rem;">↩️返回</button>`;
-            }
-            actions += `<button class="btn btn-warning delete-record" data-id="${b.id}" style="padding:10px 20px; font-size:1rem;">🗑️刪除</button>`;
-
-            html += `
-                <div class="record-item">
-                    <div class="record-info">
-                        ${typeIcon} <strong>${b.time || ''}</strong> ${b.school || ''} ${b.class || ''} 學號${b.studentId || ''}<br>
-                        ✂️ ${barberName}
-                    </div>
-                    <div style="font-size:1.5rem; min-width:60px;">${voucherIcon}</div>
-                    <div class="record-actions">${actions}</div>
-                </div>
-            `;
+            if (showRevert) actions += `<button class="btn btn-secondary revert-complete" data-id="${b.id}" style="padding:10px 20px;">↩️返回</button>`;
+            actions += `<button class="btn btn-warning delete-record" data-id="${b.id}" style="padding:10px 20px;">🗑️刪除</button>`;
+            html += `<div class="record-item"><div class="record-info">${typeIcon} <strong>${b.time||''}</strong> ${b.school||''} ${b.class||''} 學號${b.studentId||''}<br>✂️ ${b.barber||'-'}</div><div style="font-size:1.5rem;">${voucherIcon}</div><div class="record-actions">${actions}</div></div>`;
         });
         container.innerHTML = html || '<div style="padding:30px; text-align:center;">無記錄</div>';
     }
 
-    // ========== 統計報表 ==========
     let chartInstance = null;
     async function loadStats() {
         const completed = bookings.filter(b => b.status === 'completed');
-        const totalStudents = completed.filter(b => b.type === 'student').length;
-        const totalVouchers = completed.filter(b => b.voucherPurchased === true).length;
-        
-        document.getElementById('totalStudents').innerText = totalStudents;
-        document.getElementById('totalVouchers').innerText = totalVouchers;
-
-        const barberStats = {};
-        config.barbers.forEach(name => {
-            barberStats[name] = { services: 0, vouchers: 0 };
-        });
-
-        completed.forEach(b => {
-            if (b.barber && barberStats[b.barber]) {
-                barberStats[b.barber].services++;
-                if (b.voucherPurchased) {
-                    barberStats[b.barber].vouchers++;
-                }
-            }
-        });
-
-        const labels = config.barbers;
-        const servicesData = labels.map(name => barberStats[name].services);
-        const vouchersData = labels.map(name => barberStats[name].vouchers);
-
+        document.getElementById('totalStudents').innerText = completed.filter(b => b.type === 'student').length;
+        document.getElementById('totalVouchers').innerText = completed.filter(b => b.voucherPurchased === true).length;
+        const barberStats = {}; config.barbers.forEach(n => barberStats[n] = { services:0, vouchers:0 });
+        completed.forEach(b => { if(b.barber && barberStats[b.barber]) { barberStats[b.barber].services++; if(b.voucherPurchased) barberStats[b.barber].vouchers++; } });
         const ctx = document.getElementById('barberChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
         chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: config.barbers,
                 datasets: [
-                    {
-                        label: '服務量 (已剪)',
-                        data: servicesData,
-                        backgroundColor: '#F25C0A',
-                        borderRadius: 10
-                    },
-                    {
-                        label: '優惠券售出',
-                        data: vouchersData,
-                        backgroundColor: '#28a745',
-                        borderRadius: 10
-                    }
+                    { label: '服務量 (已剪)', data: config.barbers.map(n=>barberStats[n].services), backgroundColor: '#F25C0A', borderRadius: 10 },
+                    { label: '優惠券售出', data: config.barbers.map(n=>barberStats[n].vouchers), backgroundColor: '#28a745', borderRadius: 10 }
                 ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { 
-                        position: 'top',
-                        labels: { font: { size: 14 } }
-                    }
-                },
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { stepSize: 1, font: { size: 14 } },
-                        title: { display: true, text: '人數', font: { size: 16 } }
-                    },
-                    x: {
-                        ticks: { font: { size: 14 } }
-                    }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
         });
     }
 
-    // ========== 更新預約狀態 ==========
-    async function updateBookingStatus(bookingId, newStatus, additionalFields = {}) {
-        try {
-            await db.collection("appointments").doc(bookingId).update({ status: newStatus, ...additionalFields });
-            return true;
-        } catch (error) {
-            console.error('更新失敗', error);
-            return false;
-        }
-    }
+    async function updateBookingStatus(id, status, fields = {}) { try { await db.collection("appointments").doc(id).update({ status, ...fields }); return true; } catch(e){ return false; } }
+    async function deleteBookingById(id) { try { await db.collection("appointments").doc(id).delete(); return true; } catch(e){ return false; } }
 
-    async function deleteBookingById(bookingId) {
-        try {
-            await db.collection("appointments").doc(bookingId).delete();
-            return true;
-        } catch (error) {
-            console.error('刪除失敗', error);
-            return false;
-        }
-    }
-
-    // ========== 事件綁定 ==========
     document.addEventListener('click', async function(e) {
         const date = document.getElementById('staffDatePicker').value;
-
         if (e.target.classList.contains('mark-processing')) {
-            const id = e.target.dataset.id;
-            const type = e.target.dataset.type;
+            const id = e.target.dataset.id; const type = e.target.dataset.type;
             const selector = type === 'student' ? `input[name="barber_stu_${id}"]:checked` : `input[name="barber_par_${id}"]:checked`;
-            const barberSelected = document.querySelector(selector);
-            if (!barberSelected) {
-                alert('請選擇一位師傅');
-                return;
-            }
-            await updateBookingStatus(id, 'processing', { barber: barberSelected.value });
-            await fetchAllBookings();
-            renderStaffPage(date);
+            const barber = document.querySelector(selector);
+            if (!barber) { alert('請選擇師傅'); return; }
+            await updateBookingStatus(id, 'processing', { barber: barber.value });
+            await fetchAllBookings(); renderStaffPage(date);
         }
-
+        if (e.target.classList.contains('mark-parent-complete')) {
+            const id = e.target.dataset.id;
+            const selector = `input[name="barber_par_${id}"]:checked`;
+            const barber = document.querySelector(selector);
+            if (!barber) { alert('請選擇師傅'); return; }
+            await updateBookingStatus(id, 'completed', { completedAt: new Date().toISOString(), barber: barber.value, voucherPurchased: false });
+            await fetchAllBookings(); renderStaffPage(date);
+        }
         if (e.target.classList.contains('mark-noshow')) {
             const id = e.target.dataset.id;
             await updateBookingStatus(id, 'no-show', { noShowAt: new Date().toISOString() });
-            await fetchAllBookings();
-            renderStaffPage(date);
+            await fetchAllBookings(); renderStaffPage(date);
         }
-
         if (e.target.classList.contains('mark-complete-with-voucher')) {
             const id = e.target.dataset.id;
-            await updateBookingStatus(id, 'completed', { 
-                completedAt: new Date().toISOString(),
-                voucherPurchased: true 
-            });
-            await fetchAllBookings();
-            renderStaffPage(date);
+            await updateBookingStatus(id, 'completed', { completedAt: new Date().toISOString(), voucherPurchased: true });
+            await fetchAllBookings(); renderStaffPage(date);
         }
-
         if (e.target.classList.contains('mark-complete-without-voucher')) {
             const id = e.target.dataset.id;
-            await updateBookingStatus(id, 'completed', { 
-                completedAt: new Date().toISOString(),
-                voucherPurchased: false 
-            });
-            await fetchAllBookings();
-            renderStaffPage(date);
+            await updateBookingStatus(id, 'completed', { completedAt: new Date().toISOString(), voucherPurchased: false });
+            await fetchAllBookings(); renderStaffPage(date);
         }
-
         if (e.target.classList.contains('revert-complete')) {
-            const id = e.target.dataset.id;
-            const booking = bookings.find(b => b.id === id);
+            const id = e.target.dataset.id; const booking = bookings.find(b => b.id === id);
             if (!booking) return;
             const conflict = bookings.find(b => b.date === booking.date && b.time === booking.time && b.status === 'pending' && b.id !== id);
-            if (conflict) {
-                alert('無法返回：該時段已有其他待處理預約。');
-                return;
-            }
+            if (conflict) { alert('無法返回：該時段已有其他待處理預約。'); return; }
             await updateBookingStatus(id, 'pending', { completedAt: null });
-            await fetchAllBookings();
-            renderStaffPage(date);
+            await fetchAllBookings(); renderStaffPage(date);
         }
-
         if (e.target.classList.contains('delete-record')) {
-            const id = e.target.dataset.id;
-            if (confirm('確定刪除此記錄？')) {
-                await deleteBookingById(id);
-                await fetchAllBookings();
-                renderStaffPage(date);
-            }
+            if (!confirm('確定刪除？')) return;
+            await deleteBookingById(e.target.dataset.id);
+            await fetchAllBookings(); renderStaffPage(date);
         }
     });
 
-    // 手動登記
     document.getElementById('submitStaffWalkin').addEventListener('click', async function() {
         const school = document.getElementById('staffSchool').value;
-        const gradeName = document.getElementById('staffGradeSelect').value;
+        const grade = document.getElementById('staffGradeSelect').value;
         const letter = document.getElementById('staffLetterSelect').value;
         const studentId = document.getElementById('staffStudentId').value;
         const email = document.getElementById('staffEmail').value.trim();
+        const barber = document.getElementById('staffBarber').value;
         const type = document.getElementById('staffBookingType').value;
-
-        if (!school || !gradeName || !letter || !studentId) {
-            alert('請填寫完整學校、年級、班別、學號');
-            return;
-        }
-
-        const className = gradeName + letter;
+        if (!school || !grade || !letter || !studentId || !barber) { alert('請填寫完整學校、年級、班別、學號、師傅'); return; }
+        const className = grade + letter;
         const today = getTodayStr();
         const now = new Date();
         const timeStr = now.toTimeString().slice(0,5);
-
-        const newBooking = {
-            email: email || '',
-            school,
-            class: className,
-            studentId,
-            date: today,
-            time: timeStr,
-            barber: ''
-        };
-        
         try {
             await db.collection("appointments").add({
-                ...newBooking,
-                status: 'completed',
-                type: type,
-                voucherPurchased: false,
-                completedAt: now.toISOString(),
-                source: 'walkin'
+                email: email || '', school, class: className, studentId, date: today, time: timeStr, barber,
+                status: 'completed', type, voucherPurchased: false, completedAt: now.toISOString(), source: 'walkin'
             });
-            await fetchAllBookings();
-            renderStaffPage(today);
-            alert('登記成功');
-        } catch (error) {
-            alert('登記失敗：' + error.message);
-        }
+            await fetchAllBookings(); renderStaffPage(today); alert('登記成功');
+        } catch (error) { alert('登記失敗：' + error.message); }
     });
 
-    // 刷新按鈕
     document.getElementById('staffRefreshBtn').addEventListener('click', function() {
-        const date = document.getElementById('staffDatePicker').value;
-        renderStaffPage(date);
+        renderStaffPage(document.getElementById('staffDatePicker').value);
     });
 
-    // 初始化
     (async function init() {
         await auth.signInAnonymously();
         await fetchConfig();
         await fetchAllBookings();
-
-        // 填充學校下拉選單 (使用預設學校)
         const staffSchool = document.getElementById('staffSchool');
-        const schools = ['中學', '小學'];
-        schools.forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            staffSchool.appendChild(opt);
-        });
-
-        // 填充年級下拉選單
+        ['中學','小學'].forEach(n => { let o = document.createElement('option'); o.value=n; o.textContent=n; staffSchool.appendChild(o); });
         const staffGrade = document.getElementById('staffGradeSelect');
-        config.gradeNames.forEach(g => {
-            const opt = document.createElement('option');
-            opt.value = g;
-            opt.textContent = g;
-            staffGrade.appendChild(opt);
-        });
-
-        // 綁定年級連動
+        config.gradeNames.forEach(g => { let o = document.createElement('option'); o.value=g; o.textContent=g; staffGrade.appendChild(o); });
         document.getElementById('staffGradeSelect').addEventListener('change', staffUpdateLetterSelect);
         document.getElementById('staffLetterSelect').addEventListener('change', staffUpdateStudentIdSelect);
-
-        // 設定今天日期並渲染
         document.getElementById('staffDatePicker').value = getTodayStr();
         renderStaffPage(getTodayStr());
     })();
