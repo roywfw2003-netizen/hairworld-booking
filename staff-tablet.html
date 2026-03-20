@@ -18,7 +18,7 @@
         .staff-container { max-width: 1400px; width: 100%; margin: 0 auto; background-color: white; border-radius: 40px; box-shadow: 0 10px 40px rgba(247, 147, 49, 0.2); padding: 30px; border: 1px solid #FFD8B2; }
         h1 { color: #F25C0A; font-size: 2rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         h2 { color: #B04400; font-size: 1.6rem; margin: 25px 0 15px 0; border-bottom: 2px solid #FFB985; padding-bottom: 8px; }
-        h3 { color: #F25C0A; font-size: 1.4rem; margin: 15px 0 10px 0; }
+        h3 { color: #F25C0A; font-size: 1.4rem; margin: 15px 0 10px 0; display: flex; align-items: center; gap: 10px; }
         .date-bar { display: flex; gap: 15px; align-items: center; margin-bottom: 30px; background: #FFF2E3; padding: 15px 20px; border-radius: 60px; border: 1px solid #FFB985; flex-wrap: wrap; }
         .date-bar label { font-size: 1.2rem; font-weight: 600; color: #77450E; }
         .date-bar input[type="date"] { flex: 1; padding: 12px 18px; border: 2px solid #FFCDA5; border-radius: 50px; font-size: 1rem; background: white; min-width: 150px; }
@@ -35,8 +35,9 @@
         .record-info { flex: 2; min-width: 200px; font-size: 1rem; line-height: 1.5; }
         .record-info strong { color: #F25C0A; font-size: 1.1rem; }
         .barber-selector { flex: 1; min-width: 180px; display: flex; flex-wrap: wrap; gap: 8px; background: #FFE6D3; padding: 12px; border-radius: 40px; }
-        .barber-selector label { display: flex; align-items: center; gap: 4px; font-size: 0.9rem; background: white; padding: 5px 12px; border-radius: 40px; border: 1px solid #FFB985; }
-        .barber-selector input[type="radio"] { width: 18px; height: 18px; accent-color: #F25C0A; }
+        .barber-selector label { display: flex; align-items: center; gap: 4px; font-size: 0.9rem; background: white; padding: 5px 12px; border-radius: 40px; border: 1px solid #FFB985; cursor: pointer; }
+        .barber-selector label:hover { background: #FFE6D3; }
+        .barber-selector input[type="radio"] { width: 18px; height: 18px; accent-color: #F25C0A; margin: 0 4px 0 0; }
         .record-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .btn { border: none; padding: 12px 20px; border-radius: 50px; font-size: 1rem; font-weight: 600; cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,0.2); transition: 0.1s; min-width: 100px; }
         .btn:active { transform: translateY(3px); box-shadow: none; }
@@ -44,6 +45,7 @@
         .btn-warning { background: #ffc107; color: #333; box-shadow: 0 3px 0 #d39e00; }
         .btn-secondary { background: #6c757d; color: white; box-shadow: 0 3px 0 #545b62; }
         .btn-danger { background: #dc3545; color: white; box-shadow: 0 3px 0 #bd2130; }
+        .btn-info { background: #17a2b8; color: white; box-shadow: 0 3px 0 #117a8b; }
         .btn-small { background: #FFE1C7; color: #B04400; border: none; padding: 8px 16px; font-size: 0.9rem; font-weight: 600; border-radius: 40px; cursor: pointer; }
         .total-badge { background: #F25C0A; color: white; padding: 4px 12px; border-radius: 40px; font-size: 1rem; margin-left: 12px; }
         .stats-container { margin-top: 40px; padding: 25px; background: white; border-radius: 35px; border: 3px solid #F25C0A; }
@@ -55,7 +57,7 @@
         .summary-card .number { font-size: 2.5rem; font-weight: bold; color: #F25C0A; }
         .summary-card .label { font-size: 1.2rem; color: #B04400; }
         .section-block { background: #FFF9F2; border-radius: 30px; padding: 20px; margin-bottom: 35px; border: 2px solid #FFB985; }
-        .list-header { display: flex; font-weight: bold; font-size: 1rem; padding: 12px 0; border-bottom: 2px solid #FFB985; margin-bottom: 12px; color: #B04400; flex-wrap: wrap; }
+        .list-header { display: flex; font-weight: bold; font-size: 1rem; padding: 12px 0; border-bottom: 2px solid #FFB985; margin-bottom: 12px; color: #B04400; flex-wrap: wrap; gap: 10px; }
         .list-header span { flex: 1; min-width: 70px; }
         .footer { margin-top: 35px; text-align: center; color: #aaa; font-size: 0.9rem; }
         @media (max-width: 768px) { .pending-row { flex-direction: column; } .staff-container { padding: 15px; } h1 { font-size: 1.6rem; } .date-bar { flex-direction: column; align-items: stretch; } .date-bar button { width: 100%; } .pending-col { min-width: 100%; } }
@@ -67,16 +69,30 @@
         .btn-manual-student { background: #F25C0A; color: white; box-shadow: 0 3px 0 #B04400; }
         .btn-manual-parent { background: #28a745; color: white; box-shadow: 0 3px 0 #1e7e34; }
         .btn-manual-student:active, .btn-manual-parent:active { transform: translateY(3px); box-shadow: none; }
-        .edit-mode-badge { background: #ffc107; color: #333; padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; }
+        .edit-mode-badge { background: #ffc107; color: #333; padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; display: inline-block; margin-left: 10px; }
+        .edit-controls { display: flex; align-items: center; gap: 15px; margin-left: auto; }
         .warning-text { color: #dc3545; font-weight: bold; }
+        .note { color: #B45A2A; font-size: 0.85rem; margin-top: 10px; }
+        .edit-section { background: #FFF2E3; border-radius: 30px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; }
     </style>
 </head>
 <body>
     <div class="staff-container">
         <h1>
             <i class="fa-solid fa-scissors"></i> Hair World 員工工作區
-            <span style="font-size:0.8rem; margin-left:auto; color:#aaa;">iPad版 v3.2</span>
+            <span style="font-size:0.8rem; color:#aaa;">iPad版 v3.3</span>
+            <span class="edit-mode-badge" id="editModeBadge" style="display:none;">✏️ 編輯模式已啟用</span>
         </h1>
+        
+        <div class="edit-section">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-lock" style="color:#F25C0A;"></i>
+                <span><strong>編輯模式</strong> - 啟用後可返回/刪除已完成及未到達記錄</span>
+            </div>
+            <button class="btn btn-info" id="unlockEditBtn" style="padding: 10px 20px; min-width: auto;">
+                <i class="fa-solid fa-key"></i> 解鎖編輯模式
+            </button>
+        </div>
         
         <div class="date-bar">
             <label for="staffDatePicker"><i class="fa-regular fa-calendar"></i> 日期：</label>
@@ -117,8 +133,8 @@
                 <button class="btn btn-manual-student" id="submitStudentWalkin">👨‍🎓 學生剪髮登記</button>
                 <button class="btn btn-manual-parent" id="submitParentWalkin">🎟️ 優惠券剪髮登記</button>
             </div>
-            <div class="note" style="margin-top:10px; font-size:0.85rem; color:#B45A2A;">
-                <i class="fa-solid fa-info-circle"></i> 登記前會自動檢查該學生是否有預約記錄（待處理/已完成/未到達），如有重複將拒絕登記。
+            <div class="note">
+                <i class="fa-solid fa-info-circle"></i> 登記前會自動檢查該學生是否有預約記錄（待處理/已完成/未到達），如有重複將拒絕登記並顯示紅色警告。
             </div>
         </div>
         
@@ -146,7 +162,7 @@
                 <div class="summary-card"><div class="number" id="totalVouchers">0</div><div class="label">已買優惠券</div></div>
             </div>
         </div>
-        <div class="footer">@vison 3.2 iPad版 | 重複預約紅色警告 | 學生/家長雙欄布局</div>
+        <div class="footer">@vison 3.3 iPad版 | 重複預約紅色警告 | 學生/家長雙欄布局 | 編輯模式可返回/刪除記錄</div>
     </div>
 
 <script>
@@ -207,6 +223,7 @@
                 if (data.letterNames) config.letterNames = data.letterNames;
                 if (data.limits) config.limits = data.limits;
                 if (data.School) config.School = data.School;
+                if (data.staffEditPassword) config.staffEditPassword = data.staffEditPassword;
                 
                 const barberSelect = document.getElementById('staffBarber');
                 if (barberSelect) {
@@ -223,7 +240,7 @@
                 if (schoolSelect) {
                     schoolSelect.innerHTML = '<option value="">請選擇學校</option>';
                     (config.School || []).forEach(school => {
-                        if (school.enabled) {
+                        if (school.enabled !== false) {
                             const opt = document.createElement('option');
                             opt.value = school.name;
                             opt.textContent = school.name;
@@ -255,7 +272,7 @@
         sid.innerHTML = '<option value="">請選擇學號</option>' + Array.from({length:limit},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
     }
 
-    // ========== 檢查是否有重複預約（包含待處理、已完成、未到達）並返回紅色文字 ==========
+    // ========== 檢查是否有重複預約（包含待處理、已完成、未到達）並返回詳細資訊 ==========
     async function checkDuplicateBooking(school, className, studentId, type) {
         const existing = bookings.find(b => 
             b.school === school && 
@@ -269,15 +286,9 @@
             if (existing.status === 'pending') statusText = '待處理';
             else if (existing.status === 'completed') statusText = '已完成';
             else if (existing.status === 'no-show') statusText = '未到達';
-            return { duplicate: true, status: statusText, date: existing.date };
+            return { duplicate: true, status: statusText, date: existing.date, time: existing.time };
         }
         return { duplicate: false };
-    }
-
-    // ========== 顯示紅色警告訊息 ==========
-    function showRedAlert(title, message) {
-        // 使用自訂的 alert 樣式，但為了相容性，用標準 alert 並加上紅色標記文字
-        alert(`⚠️ ${title}\n\n${message}`);
     }
 
     async function manualRegister(type) {
@@ -297,8 +308,8 @@
         const checkResult = await checkDuplicateBooking(school, className, studentId, type);
         if (checkResult.duplicate) {
             const typeName = type === 'student' ? '學生' : '優惠券';
-            // 紅色警告訊息 - 使用紅色標記文字
-            alert(`⚠️ 該${typeName}已有預約記錄！\n\n狀態：${checkResult.status}\n日期：${checkResult.date}\n\n請勿重複登記。`);
+            // 紅色警告訊息
+            alert(`⚠️ 該${typeName}已有預約記錄！\n\n狀態：${checkResult.status}\n日期：${checkResult.date}\n時間：${checkResult.time || '-'}\n\n請勿重複登記。`);
             return;
         }
         
@@ -437,14 +448,16 @@
                 updateTime = date.toLocaleTimeString('zh-HK', { hour12: false, hour: '2-digit', minute: '2-digit' });
             }
             let actions = '';
-            if (showRevert && (staffEditMode)) {
-                actions += `<button class="btn btn-secondary revert-complete" data-id="${b.id}" style="padding:10px 20px;">↩️返回</button>`;
+            if (showRevert && staffEditMode) {
+                actions += `<button class="btn btn-secondary revert-complete" data-id="${b.id}" style="padding:8px 16px;">↩️返回</button>`;
             }
-            actions += `<button class="btn btn-warning delete-record" data-id="${b.id}" style="padding:10px 20px;">🗑️刪除</button>`;
+            if (staffEditMode) {
+                actions += `<button class="btn btn-warning delete-record" data-id="${b.id}" style="padding:8px 16px;">🗑️刪除</button>`;
+            }
             
             html += `<div class="record-item">
                 <div class="record-info">${typeIcon} [${updateTime}] ${b.time || ''}<br>🏫 ${b.school||''} ${b.class||''} 學號${b.studentId||''}<br>✂️ ${b.barber||'-'}</div>
-                <div style="font-size:1.5rem;">${voucherIcon}</div>
+                <div style="font-size:1.2rem; min-width:40px; text-align:center;">${voucherIcon}</div>
                 <div class="record-actions">${actions}</div>
             </div>`;
         });
@@ -522,6 +535,7 @@
             await fetchAllBookings(); renderStaffPage(date);
         }
         if (e.target.classList.contains('revert-complete')) {
+            if (!staffEditMode) { alert('請先解鎖編輯模式'); return; }
             const id = e.target.dataset.id; const booking = bookings.find(b => b.id === id);
             if (!booking) return;
             const conflict = bookings.find(b => b.date === booking.date && b.time === booking.time && b.status === 'pending' && b.id !== id);
@@ -530,7 +544,8 @@
             await fetchAllBookings(); renderStaffPage(date);
         }
         if (e.target.classList.contains('delete-record')) {
-            if (!confirm('確定刪除？')) return;
+            if (!staffEditMode) { alert('請先解鎖編輯模式'); return; }
+            if (!confirm('確定刪除此記錄？此操作無法復原！')) return;
             await deleteBookingById(e.target.dataset.id);
             await fetchAllBookings(); renderStaffPage(date);
         }
@@ -540,14 +555,17 @@
         renderStaffPage(document.getElementById('staffDatePicker').value);
     });
 
-    // 編輯模式解鎖（用於返回/刪除操作）
-    document.getElementById('unlockEditBtn')?.addEventListener('click', function() {
+    // 編輯模式解鎖
+    document.getElementById('unlockEditBtn').addEventListener('click', function() {
         const pwd = prompt('請輸入編輯解鎖密碼');
         if (pwd === config.staffEditPassword) {
             staffEditMode = true;
             document.getElementById('editModeBadge').style.display = 'inline-block';
             renderStaffPage(document.getElementById('staffDatePicker').value);
-        } else alert('密碼錯誤');
+            alert('✅ 編輯模式已啟用！現在可以返回或刪除已完成/未到達的記錄。');
+        } else {
+            alert('❌ 密碼錯誤，無法啟用編輯模式');
+        }
     });
 
     (async function init() {
