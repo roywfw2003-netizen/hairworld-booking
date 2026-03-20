@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 學生預約 (v10.6 修復手動登記)</title>
+    <title>Hair World 學生預約 (v10.7 修復手動登記)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -13,7 +13,6 @@
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* 完整樣式與之前相同，此處省略以節省篇幅，實際使用時請保留完整樣式 */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #FFF5E6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 12px 0 30px 0; margin: 0; }
         .app-container { width: 100%; max-width: 400px; background-color: white; border-radius: 32px 32px 0 0; box-shadow: 0 8px 30px rgba(247, 147, 49, 0.15); overflow: hidden; padding: 20px 20px 30px 20px; margin: 10px 12px; border: 1px solid #FFD8B2; }
@@ -206,7 +205,7 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.6 (學生版)</div>
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.7 (學生版)</div>
         <div class="divider"></div>
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
         <div style="margin-top: 8px;"><label>員工專區</label><div class="admin-row"><input type="password" id="staffPass" placeholder="員工密碼" value=""><button class="btn-small" id="enterStaffBtn">進入員工頁面</button></div></div>
@@ -465,7 +464,7 @@
         <button class="back-btn" id="backToBookingBtn">⟵ 返回預約頁</button>
     </div>
 
-    <!-- 員工專區頁面 (待處理分開，其餘合併) -->
+    <!-- 員工專區頁面 -->
     <div id="staffPage" class="page hidden">
         <div class="staff-header">
             <h3>🧑‍💼 員工工作區</h3>
@@ -607,7 +606,7 @@
         const suspicious = getSuspiciousActivities();
         const tableDiv = document.getElementById('suspiciousTable');
         if (suspicious.length === 0) { tableDiv.innerHTML = '<div style="padding:10px; text-align:center;">✅ 目前無可疑活動</div>'; return; }
-        let html = '<tr><thead> <tr><th>時間</th><th>學校</th><th>班級</th><th>學號</th><th>日期</th><th>時間</th></tr></thead><tbody>';
+        let html = '<table><thead> <tr><th>時間</th><th>學校</th><th>班級</th><th>學號</th><th>日期</th><th>時間</th></tr></thead><tbody>';
         suspicious.sort((a,b) => b.timestamp - a.timestamp).forEach(a => {
             const timeStr = new Date(a.timestamp).toLocaleTimeString('zh-HK', { hour12: false });
             html += `<tr><td>${timeStr}</td><td>${a.school}</td><td>${a.class}</td><td>${a.studentId}</td><td>${a.date}</td><td>${a.time}</td></tr>`;
@@ -740,16 +739,12 @@
                     config.School = config.School.map(name => ({ name, short: name.substring(0,1), enabled: true }));
                 }
                 
-                // 更新師傅下拉選單
-                const staffBarber = document.getElementById('staffBarber');
-                if (staffBarber) {
-                    staffBarber.innerHTML = '<option value="">請選擇師傅</option>';
-                    config.barbers.forEach(b => {
-                        const opt = document.createElement('option');
-                        opt.value = b;
-                        opt.textContent = b;
-                        staffBarber.appendChild(opt);
-                    });
+                // 確保 gradeNames 和 letterNames 有值
+                if (!config.gradeNames || config.gradeNames.length === 0) {
+                    config.gradeNames = ['小一', '小二', '小三', '小四', '小五', '小六'];
+                }
+                if (!config.letterNames || config.letterNames.length === 0) {
+                    config.letterNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
                 }
             } else {
                 await db.collection("config").doc("settings").set(config);
@@ -1312,47 +1307,6 @@
     document.getElementById('gradeSelect').addEventListener('change', updateLetterSelect);
     document.getElementById('letterSelect').addEventListener('change', updateStudentIdSelect);
 
-    // 員工頁面年級連動函數
-    function staffUpdateLetterSelect() {
-        const gradeSelect = document.getElementById('staffGradeSelect');
-        const letterSelect = document.getElementById('staffLetterSelect');
-        const gradeName = gradeSelect.value;
-        if (!gradeName) { 
-            letterSelect.innerHTML = '<option value="">請先選擇年級</option>'; 
-            return; 
-        }
-        letterSelect.innerHTML = '<option value="">請選擇班別</option>';
-        config.letterNames.forEach(letter => {
-            const opt = document.createElement('option');
-            opt.value = letter;
-            opt.textContent = letter;
-            letterSelect.appendChild(opt);
-        });
-        staffUpdateStudentIdSelect();
-    }
-    
-    function staffUpdateStudentIdSelect() {
-        const gradeName = document.getElementById('staffGradeSelect').value;
-        const letter = document.getElementById('staffLetterSelect').value;
-        const studentSelect = document.getElementById('staffStudentId');
-        if (!gradeName || !letter) { 
-            studentSelect.innerHTML = '<option value="">請先選擇年級與班別</option>'; 
-            return; 
-        }
-        const gradeNum = getGradeNumber(gradeName);
-        if (!gradeNum) { 
-            studentSelect.innerHTML = '<option value="">年級錯誤</option>'; 
-            return; 
-        }
-        const className = gradeNum + letter;
-        const limit = config.limits[className] || 25;
-        let options = '<option value="">請選擇學號</option>';
-        for (let i = 1; i <= limit; i++) {
-            options += `<option value="${i}">${i}</option>`;
-        }
-        studentSelect.innerHTML = options;
-    }
-
     function getAvailableTimeSlotsFromDB(dateStr) {
         const baseSlots = getBaseTimeSlots(dateStr);
         const bookedTimes = bookings.filter(b => b.date === dateStr && b.status === 'pending').map(b => b.time);
@@ -1519,14 +1473,12 @@
 
         pendingList.sort((a, b) => a.time?.localeCompare(b.time || '') || 0);
         
-        // 已完成按更新時間排序
         completedList.sort((a, b) => {
             const aTime = a.updatedAt || a.completedAt || '';
             const bTime = b.updatedAt || b.completedAt || '';
             return bTime.localeCompare(aTime);
         });
         
-        // 未到達按更新時間排序
         noshowList.sort((a, b) => {
             const aTime = a.updatedAt || a.noShowAt || '';
             const bTime = b.updatedAt || b.noShowAt || '';
@@ -1552,14 +1504,12 @@
 
         pendingList.sort((a, b) => a.time?.localeCompare(b.time || '') || 0);
         
-        // 已完成按更新時間排序
         completedList.sort((a, b) => {
             const aTime = a.updatedAt || a.completedAt || '';
             const bTime = b.updatedAt || b.completedAt || '';
             return bTime.localeCompare(aTime);
         });
         
-        // 未到達按更新時間排序
         noshowList.sort((a, b) => {
             const aTime = a.updatedAt || a.noShowAt || '';
             const bTime = b.updatedAt || b.noShowAt || '';
@@ -1586,33 +1536,33 @@
         if (config.showInRecords.barber) headers.push('師傅');
         headers.push('日期', '時間', '操作');
 
-        let html = '<table><thead> either';
+        let html = 'Table<thead> 夜';
         headers.forEach(h => html += `<th>${h}</th>`);
         html += ' </thead><tbody>';
 
         bookingsArray.forEach(b => {
-            html += ' <tr>';
-            if (config.showInRecords.email && isStudent) html += `<td>${b.email || ''}</td>`;
-            if (config.showInRecords.school) html += `<td>${b.school || ''}</td>`;
+            html += '  <tr>';
+            if (config.showInRecords.email && isStudent) html += ` Generally${b.email || ''} 后端`;
+            if (config.showInRecords.school) html += `   back${b.school || ''} 后端`;
             if (config.showInRecords.grade) {
                 const gradeNum = b.class ? b.class.charAt(0) : '';
                 const gradeName = config.gradeNames[parseInt(gradeNum)-1] || gradeNum;
-                html += `<td>${gradeName}</td>`;
+                html += `   back${gradeName} 后端`;
             }
             if (config.showInRecords.class) {
                 const letter = b.class ? b.class.slice(1) : '';
-                html += `<td>${letter}</td>`;
+                html += `   back${letter} 后端`;
             }
-            if (config.showInRecords.studentId) html += `<td>${b.studentId || ''}</td>`;
-            if (config.showInRecords.barber) html += `<td>${b.barber || ''}</td>`;
-            html += `<td>${b.date}</td><td>${b.time || ''}</td>`;
+            if (config.showInRecords.studentId) html += `   back${b.studentId || ''} 后端`;
+            if (config.showInRecords.barber) html += `   back${b.barber || ''} 后端`;
+            html += `   back${b.date} 后端 back${b.time || ''} 后端`;
             let actions = '';
             if (showComplete) actions += `<button class="action-btn complete-btn" data-id="${b.id}">完成</button>`;
             if (showRevert) actions += `<button class="action-btn revert-btn" data-id="${b.id}">返回</button>`;
             if (showDelete) actions += `<button class="action-btn delete-row-btn" data-id="${b.id}">刪除</button>`;
-            html += `<td>${actions}</td></tr>`;
+            html += `   back${actions} 后端  </tr>`;
         });
-        html += '</tbody> </table>';
+        html += '</tbody> 器';
         return html;
     }
 
@@ -1774,7 +1724,6 @@
         const container = document.getElementById(type === 'completed' ? 'completedItems' : 'noshowItems');
         if (!container) return;
         
-        // 按更新時間排序（最新的在上）
         const sorted = items.sort((a, b) => {
             const aTime = a.updatedAt || (type === 'completed' ? a.completedAt : a.noShowAt) || '';
             const bTime = b.updatedAt || (type === 'completed' ? b.completedAt : b.noShowAt) || '';
@@ -1799,7 +1748,6 @@
             if (config.showInRecords.barber && b.barber) info += ` 師傅:${b.barber}`;
             if (config.showInRecords.email && b.email) info += ` 📧${b.email}`;
             
-            // 顯示更新時間
             let updateTimeStr = '';
             const updateTime = b.updatedAt || (type === 'completed' ? b.completedAt : b.noShowAt);
             if (updateTime) {
@@ -2076,22 +2024,101 @@
             document.getElementById('staffPage').classList.remove('hidden');
             await fetchAllBookings();
             applyStaffFieldSettings();
-            // 初始化員工頁面下拉選單
+            
+            // ========== 初始化員工頁面下拉選單 ==========
             const staffGradeSelect = document.getElementById('staffGradeSelect');
-            staffGradeSelect.innerHTML = '<option value="">請選擇年級</option>';
-            config.gradeNames.forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g;
-                opt.textContent = g;
-                staffGradeSelect.appendChild(opt);
-            });
             const staffLetterSelect = document.getElementById('staffLetterSelect');
+            const staffStudentId = document.getElementById('staffStudentId');
+            
+            // 1. 填充年級下拉選單
+            staffGradeSelect.innerHTML = '<option value="">請選擇年級</option>';
+            if (config.gradeNames && config.gradeNames.length > 0) {
+                config.gradeNames.forEach(g => {
+                    const opt = document.createElement('option');
+                    opt.value = g;
+                    opt.textContent = g;
+                    staffGradeSelect.appendChild(opt);
+                });
+            } else {
+                ['小一', '小二', '小三', '小四', '小五', '小六'].forEach(g => {
+                    const opt = document.createElement('option');
+                    opt.value = g;
+                    opt.textContent = g;
+                    staffGradeSelect.appendChild(opt);
+                });
+            }
+            
+            // 2. 初始化班別下拉選單（空）
             staffLetterSelect.innerHTML = '<option value="">請先選擇年級</option>';
+            
+            // 3. 初始化學號下拉選單（空）
+            staffStudentId.innerHTML = '<option value="">請先選擇班別</option>';
+            
+            // 4. 綁定年級變化事件 - 更新班別選項
+            staffGradeSelect.onchange = function() {
+                const gradeName = this.value;
+                if (!gradeName) {
+                    staffLetterSelect.innerHTML = '<option value="">請先選擇年級</option>';
+                    staffStudentId.innerHTML = '<option value="">請先選擇班別</option>';
+                    return;
+                }
+                staffLetterSelect.innerHTML = '<option value="">請選擇班別</option>';
+                if (config.letterNames && config.letterNames.length > 0) {
+                    config.letterNames.forEach(letter => {
+                        const opt = document.createElement('option');
+                        opt.value = letter;
+                        opt.textContent = letter;
+                        staffLetterSelect.appendChild(opt);
+                    });
+                } else {
+                    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach(letter => {
+                        const opt = document.createElement('option');
+                        opt.value = letter;
+                        opt.textContent = letter;
+                        staffLetterSelect.appendChild(opt);
+                    });
+                }
+                staffStudentId.innerHTML = '<option value="">請先選擇班別</option>';
+            };
+            
+            // 5. 綁定班別變化事件 - 更新學號選項
+            staffLetterSelect.onchange = function() {
+                const gradeName = staffGradeSelect.value;
+                const letter = this.value;
+                if (!gradeName || !letter) {
+                    staffStudentId.innerHTML = '<option value="">請先選擇年級與班別</option>';
+                    return;
+                }
+                const gradeNum = getGradeNumber(gradeName);
+                if (!gradeNum) {
+                    staffStudentId.innerHTML = '<option value="">年級錯誤</option>';
+                    return;
+                }
+                const className = gradeNum + letter;
+                const limit = (config.limits && config.limits[className]) ? config.limits[className] : 25;
+                let options = '<option value="">請選擇學號</option>';
+                for (let i = 1; i <= limit; i++) {
+                    options += `<option value="${i}">${i}</option>`;
+                }
+                staffStudentId.innerHTML = options;
+            };
+            
+            // 6. 更新師傅下拉選單
+            const staffBarber = document.getElementById('staffBarber');
+            if (staffBarber) {
+                staffBarber.innerHTML = '<option value="">請選擇師傅</option>';
+                config.barbers.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b;
+                    opt.textContent = b;
+                    staffBarber.appendChild(opt);
+                });
+            }
+            
+            // 7. 設置日期並渲染員工頁面
             document.getElementById('staffDatePicker').value = getTodayStr();
             await renderStaffPage(getTodayStr());
-            // 綁定年級連動事件
-            staffGradeSelect.addEventListener('change', staffUpdateLetterSelect);
-            staffLetterSelect.addEventListener('change', staffUpdateStudentIdSelect);
+            
         } else alert('員工密碼錯誤');
     });
 
