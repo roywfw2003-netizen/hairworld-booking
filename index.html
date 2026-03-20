@@ -69,18 +69,7 @@
         .shadow-mark { position: absolute; bottom: 2px; right: 2px; width: 20px; height: 20px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; }
         .cal-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; }
         .help-icon { width: 20px; height: 20px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; font-weight: bold; cursor: help; }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 20px; }
-        .calendar-header h2 { color: #F25C0A; font-size: 22px; flex: 1; text-align: center; }
-        .month-nav { display: flex; gap: 10px; }
-        .month-nav button { background: #FFE6D3; border: none; width: 44px; height: 44px; border-radius: 50%; font-size: 24px; color: #F25C0A; font-weight: bold; cursor: pointer; box-shadow: 0 3px 0 #FFB27F; }
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: 600; color: #B45A2A; margin-bottom: 8px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-        .calendar-cell { aspect-ratio: 1 / 1; background: #FFF9F2; border-radius: 16px; border: 1px solid #FFD8B2; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding: 6px; font-weight: 600; color: #4F310B; position: relative; cursor: pointer; }
-        .calendar-cell.holiday { border: 2px solid #ff4d4d; background: #ffe6e6; }
-        .calendar-cell .day-number { font-size: 16px; align-self: flex-start; }
-        .calendar-cell .booking-count-red { position: absolute; bottom: 4px; right: 4px; width: 20px; height: 20px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; }
-        .calendar-cell .full-mark { position: absolute; top: 2px; right: 2px; color: #ff0000; font-size: 18px; font-weight: bold; z-index: 3; text-shadow: 0 0 2px white; }
-        .empty-cell { background: #FFF1E0; border: 1px dashed #FFB27F; }
         .detail-panel { background: #FFF2E3; border-radius: 28px; padding: 18px 16px; margin: 20px 0 12px; border: 1px solid #FFB985; }
         .appointment-item { background: white; border-radius: 40px; padding: 12px 16px; margin-bottom: 8px; border-left: 6px solid #F25C0A; font-size: 15px; display: flex; align-items: center; gap: 0 10px; flex-wrap: wrap; }
         .appointment-item .actions { margin-left: auto; display: flex; gap: 5px; }
@@ -129,7 +118,7 @@
         .shadow-cell { aspect-ratio: 1 / 1; background: white; border-radius: 12px; border: 1px solid #FFD8B2; display: flex; justify-content: center; align-items: center; font-weight: 600; color: #4F310B; position: relative; cursor: pointer; }
         .shadow-cell.holiday { border: 2px solid #ff4d4d; background: #ffe6e6; }
         .shadow-cell .shadow-mark { position: absolute; bottom: 2px; right: 2px; width: 20px; height: 20px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; }
-        .shadow-footer { display: flex; justify-content: flex-end; gap: 10px; align-items: center; }
+        .shadow-footer { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
         .sync-switch { display: flex; align-items: center; gap: 5px; font-size: 14px; background: #FFE6D3; padding: 5px 12px; border-radius: 30px; }
         .field-setting-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; background: #FFF9F2; padding: 8px 12px; border-radius: 40px; border: 1px solid #FFCDA5; }
         .field-setting-row label { margin: 0; font-size: 14px; white-space: nowrap; }
@@ -211,7 +200,7 @@
         <div style="margin-top: 8px;"><label>員工專區</label><div class="admin-row"><input type="password" id="staffPass" placeholder="員工密碼" value=""><button class="btn-small" id="enterStaffBtn">進入員工頁面</button></div></div>
     </div>
 
-    <!-- 管理員月曆頁面 -->
+    <!-- 管理員月曆頁面 - 已移除頂部月曆 -->
     <div id="calendarPage" class="page hidden">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <div>
@@ -245,19 +234,33 @@
             </div>
         </div>
 
-        <div class="calendar-header">
-            <div class="month-nav"><button id="prevMonth">←</button></div>
-            <h2 id="monthYearDisplay"></h2>
-            <div class="month-nav"><button id="nextMonth">→</button></div>
-        </div>
-        <div class="weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
-        <div id="calendarGrid" class="calendar-grid"></div>
+        <!-- 頂部月曆已完全移除 -->
+        
         <div id="dailyDetail" class="detail-panel">
             <h3 id="selectedDateTitle">點擊日期查看預約</h3>
             <div id="appointmentList"></div>
         </div>
         <div class="suspicious-panel" id="suspiciousPanel"><h4>🚨 可疑活動監控 (最近1小時同設備多筆預約)</h4><div class="suspicious-table" id="suspiciousTable"></div><div class="clear-suspicious"><button class="btn-small" id="clearSuspicious">清除舊記錄</button></div></div>
-        <div class="shadow-calendar"><div class="shadow-header"><h5 id="shadowMonthYear"></h5><div class="shadow-nav"><button id="shadowPrevMonth">←</button><button id="shadowNextMonth">→</button></div></div><div class="weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div id="shadowGrid" class="shadow-grid"></div><div class="shadow-footer"><button class="btn-small" id="clearShadowMonth">清除本月數字</button></div></div>
+        
+        <!-- 影子月曆 - 新增取消功能開關 -->
+        <div class="shadow-calendar">
+            <div class="shadow-header">
+                <h5 id="shadowMonthYear"></h5>
+                <div class="shadow-nav">
+                    <button id="shadowPrevMonth">←</button>
+                    <button id="shadowNextMonth">→</button>
+                </div>
+            </div>
+            <div class="weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+            <div id="shadowGrid" class="shadow-grid"></div>
+            <div class="shadow-footer">
+                <button class="btn-small" id="clearShadowMonth">清除本月數字</button>
+                <label class="sync-switch" style="margin-left: auto;">
+                    <span>🔴 啟用取消當天預約</span>
+                    <input type="checkbox" id="enableCancelBooking" style="margin-left: 5px;">
+                </label>
+            </div>
+        </div>
         
         <details class="settings-section" id="section-field" open>
             <summary>👁️ 欄位顯示、必填、可重複與記錄開關</summary>
@@ -464,7 +467,7 @@
         <button class="back-btn" id="backToBookingBtn">⟵ 返回預約頁</button>
     </div>
 
-    <!-- 員工專區頁面 (待處理分開，其餘合併) -->
+    <!-- 員工專區頁面 -->
     <div id="staffPage" class="page hidden">
         <div class="staff-header">
             <h3>🧑‍💼 員工工作區</h3>
@@ -739,7 +742,6 @@
                     config.School = config.School.map(name => ({ name, short: name.substring(0,1), enabled: true }));
                 }
                 
-                // 更新師傅下拉選單
                 const staffBarber = document.getElementById('staffBarber');
                 if (staffBarber) {
                     staffBarber.innerHTML = '<option value="">請選擇師傅</option>';
@@ -1455,26 +1457,6 @@
         else { sel.innerHTML = avail.map(t => `<option value="${t}">${t}</option>`).join(''); note.innerText = `可預約時段 (共 ${avail.length} 個)`; }
     }
 
-    function renderAdminCalendar() {
-        const year = adminYear, month = adminMonth;
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month+1, 0).getDate();
-        const total = studentBookings.filter(b => b.date.startsWith(`${year}-${String(month+1).padStart(2,'0')}`) && b.status === 'pending').length;
-        document.getElementById('monthYearDisplay').innerText = `${year}年${month+1}月 (待處理 ${total})`;
-        let html = '';
-        for (let i = 0; i < firstDay; i++) html += '<div class="calendar-cell empty-cell"></div>';
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const count = studentBookings.filter(b => b.date === dateStr && b.status === 'pending').length;
-            const holiday = isHoliday(dateStr) ? 'holiday' : '';
-            const unavailable = dateStr <= getTodayStr();
-            const full = !unavailable && getAvailableTimeSlots(dateStr).length === 0;
-            const mark = (unavailable || full) ? '<span class="full-mark">✖</span>' : '';
-            html += `<div class="calendar-cell ${holiday}" data-date="${dateStr}"><span class="day-number">${d}</span>${count ? `<span class="booking-count-red">${count}</span>` : ''}${mark}</div>`;
-        }
-        document.getElementById('calendarGrid').innerHTML = html;
-    }
-
     function showDateDetail(dateStr) {
         const title = document.getElementById('selectedDateTitle');
         const listDiv = document.getElementById('appointmentList');
@@ -1507,14 +1489,12 @@
 
         pendingList.sort((a, b) => a.time?.localeCompare(b.time || '') || 0);
         
-        // 已完成按更新時間排序
         completedList.sort((a, b) => {
             const aTime = a.updatedAt || a.completedAt || '';
             const bTime = b.updatedAt || b.completedAt || '';
             return bTime.localeCompare(aTime);
         });
         
-        // 未到達按更新時間排序
         noshowList.sort((a, b) => {
             const aTime = a.updatedAt || a.noShowAt || '';
             const bTime = b.updatedAt || b.noShowAt || '';
@@ -1540,14 +1520,12 @@
 
         pendingList.sort((a, b) => a.time?.localeCompare(b.time || '') || 0);
         
-        // 已完成按更新時間排序
         completedList.sort((a, b) => {
             const aTime = a.updatedAt || a.completedAt || '';
             const bTime = b.updatedAt || b.completedAt || '';
             return bTime.localeCompare(aTime);
         });
         
-        // 未到達按更新時間排序
         noshowList.sort((a, b) => {
             const aTime = a.updatedAt || a.noShowAt || '';
             const bTime = b.updatedAt || b.noShowAt || '';
@@ -1574,9 +1552,9 @@
         if (config.showInRecords.barber) headers.push('師傅');
         headers.push('日期', '時間', '操作');
 
-        let html = '<table><thead><tr>';
+        let html = '表格<thead>肌';
         headers.forEach(h => html += `<th>${h}</th>`);
-        html += '</tr></thead><tbody>';
+        html += '</thead><tbody>';
 
         bookingsArray.forEach(b => {
             html += '<tr>';
@@ -1683,7 +1661,6 @@
         document.getElementById('completedCount').innerText = completed.length;
         document.getElementById('noshowCount').innerText = noshow.length;
 
-        // 學生待處理列表
         const studentDiv = document.getElementById('studentPendingList');
         studentDiv.innerHTML = '';
         if (studentPending.length === 0) studentDiv.innerHTML = '<div style="padding:10px; text-align:center;">無學生待處理預約</div>';
@@ -1707,7 +1684,6 @@
             });
         }
 
-        // 家長待處理列表 - 直接改為已完成按鈕
         const parentDiv = document.getElementById('parentPendingList');
         parentDiv.innerHTML = '';
         if (parentPending.length === 0) parentDiv.innerHTML = '<div style="padding:10px; text-align:center;">無家長待處理預約</div>';
@@ -1731,7 +1707,6 @@
             });
         }
 
-        // 處理中列表
         const processingDiv = document.getElementById('processingList');
         processingDiv.innerHTML = '';
         if (processing.length === 0) processingDiv.innerHTML = '<div style="padding:10px; text-align:center;">無處理中預約</div>';
@@ -1752,9 +1727,7 @@
             });
         }
 
-        // 已完成預約 - 按更新時間排序
         renderStaffList('completed', completed, true);
-        // 未到達預約 - 按更新時間排序
         renderStaffList('noshow', noshow, false);
     }
 
@@ -1762,7 +1735,6 @@
         const container = document.getElementById(type === 'completed' ? 'completedItems' : 'noshowItems');
         if (!container) return;
         
-        // 按更新時間排序（最新的在上）
         const sorted = items.sort((a, b) => {
             const aTime = a.updatedAt || (type === 'completed' ? a.completedAt : a.noShowAt) || '';
             const bTime = b.updatedAt || (type === 'completed' ? b.completedAt : b.noShowAt) || '';
@@ -1787,7 +1759,6 @@
             if (config.showInRecords.barber && b.barber) info += ` 師傅:${b.barber}`;
             if (config.showInRecords.email && b.email) info += ` 📧${b.email}`;
             
-            // 顯示更新時間
             let updateTimeStr = '';
             const updateTime = b.updatedAt || (type === 'completed' ? b.completedAt : b.noShowAt);
             if (updateTime) {
@@ -1820,7 +1791,6 @@
             if (confirm('標記為已完成？')) {
                 await updateBookingStatus(id, 'completed', { completedAt: new Date().toISOString() });
                 await fetchAllBookings();
-                renderAdminCalendar();
                 showDateDetail(document.getElementById('selectedDateTitle').innerText.split(' ')[0] || null);
                 renderAdminTables();
                 renderParentTables();
@@ -1838,7 +1808,6 @@
             }
             await updateBookingStatus(id, 'pending', { completedAt: null });
             await fetchAllBookings();
-            renderAdminCalendar();
             renderAdminTables();
             renderParentTables();
             renderStudentCalendar();
@@ -1848,7 +1817,6 @@
             if (confirm('確定刪除此預約？')) {
                 await deleteBookingById(id);
                 await fetchAllBookings();
-                renderAdminCalendar();
                 renderAdminTables();
                 renderParentTables();
                 renderStudentCalendar();
@@ -1860,7 +1828,6 @@
             if (id && confirm('確定刪除？')) {
                 await deleteBookingById(id);
                 await fetchAllBookings();
-                renderAdminCalendar();
                 showDateDetail(item.dataset.date);
                 renderAdminTables();
                 renderParentTables();
@@ -2048,7 +2015,6 @@
             document.getElementById('staffEditPasswordInput').value = config.staffEditPassword;
             document.getElementById('staffCanEditDefault').checked = config.staffCanEditDefault;
             document.getElementById('dailyCutoff').value = config.dailyCutoff;
-            renderAdminCalendar();
             showDateDetail(null);
             renderAdminTables();
             renderParentTables();
@@ -2304,6 +2270,17 @@
         }
     });
 
+    // 取消預約開關變數
+    let enableCancelBooking = false;
+
+    // 初始化取消預約開關
+    const cancelToggle = document.getElementById('enableCancelBooking');
+    if (cancelToggle) {
+        cancelToggle.addEventListener('change', function(e) {
+            enableCancelBooking = e.target.checked;
+        });
+    }
+
     function renderShadowCalendar() {
         const year = shadowYear, month = shadowMonth;
         const firstDay = new Date(year, month, 1).getDay();
@@ -2320,10 +2297,50 @@
         document.getElementById('shadowGrid').innerHTML = html;
     }
 
-    document.getElementById('shadowGrid').addEventListener('click', function(e) {
+    // 修改影子月曆點擊事件
+    document.getElementById('shadowGrid').addEventListener('click', async function(e) {
         const cell = e.target.closest('.shadow-cell');
         if (!cell || cell.classList.contains('empty-cell')) return;
         const dateStr = cell.dataset.date;
+        
+        // 如果啟用了取消預約功能
+        if (enableCancelBooking) {
+            const targetBookings = studentBookings.filter(b => b.date === dateStr && b.status === 'pending');
+            
+            if (targetBookings.length === 0) {
+                alert(`❌ ${dateStr} 無待處理預約，無法取消`);
+                return;
+            }
+            
+            const cancelCount = targetBookings.length;
+            const confirmMsg = `確定要取消 ${dateStr} 的所有 ${cancelCount} 筆預約嗎？\n（這將直接刪除預約，無法復原）`;
+            
+            if (!confirm(confirmMsg)) return;
+            
+            let successCount = 0;
+            for (let booking of targetBookings) {
+                const deleted = await deleteBookingById(booking.id);
+                if (deleted) successCount++;
+            }
+            
+            if (successCount > 0) {
+                alert(`✅ 已取消 ${successCount} 筆預約`);
+                await fetchAllBookings();
+                renderAdminTables();
+                renderParentTables();
+                renderStudentCalendar();
+                renderTimeSlots(currentSelectedDate);
+                if (document.getElementById('selectedDateTitle').innerText.includes(dateStr)) {
+                    showDateDetail(dateStr);
+                }
+                renderShadowCalendar();
+            } else {
+                alert('取消失敗，請稍後重試');
+            }
+            return;
+        }
+        
+        // 原有的數字標記功能（未啟用取消時）
         const current = shadowMarks[dateStr];
         const input = prompt('請輸入數字 (1-9)，留空或0可清除', current || '');
         if (input === null) return;
@@ -2421,7 +2438,6 @@
         studentYear = tomorrowDate.getFullYear();
         studentMonth = tomorrowDate.getMonth();
         renderStudentCalendar();
-        renderAdminCalendar();
         showDateDetail(null);
         renderAdminTables();
         renderParentTables();
