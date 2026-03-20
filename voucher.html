@@ -99,7 +99,7 @@
                 <select id="studentIdSelect"><option value="">請先選擇年級與班別</option></select>
             </div>
             
-            <!-- 月曆區塊 - 完全複製學生頁面結構 -->
+            <!-- 月曆區塊 -->
             <div class="student-calendar">
                 <div class="cal-title">
                     <span>📅 選擇預約日期</span>
@@ -190,7 +190,6 @@
 </div>
 
 <script>
-// 完全複製學生頁面的月曆邏輯
 (function() {
     // Firebase 配置
     const firebaseConfig = {
@@ -213,18 +212,20 @@
     auth.signInAnonymously().catch(console.error);
     
     // 全域變數
-    let allBookings = [];
+    let allBookings = [];      // 所有待處理預約 (status === 'pending')
+    let allCompletedBookings = []; // 所有已完成預約 (用於顯示人數)
     let systemConfig = {
         School: [],
-        gradeNames: [],
-        letterNames: [],
+        gradeNames: ['小一', '小二', '小三', '小四', '小五', '小六'],
+        letterNames: ['A', 'B', 'C', 'D', 'E', 'F'],
         limits: {},
         weekdaySlots: ['16:00', '16:20', '16:40', '17:00', '17:20', '17:40', '18:00', '18:20', '18:40'],
         holidaySlots: ['10:30', '11:30', '12:30'],
         enableCaptcha: true,
         parentNotice: "• 每位家長只可有一個有效預約。\n• 預約時間前2小時內無法修改或取消。\n• 使用優惠券需出示相關證明。",
         parentScreenshotLabel: "確定已使用優惠券預約",
-        parentCardLabel: "我已準備好出示優惠券核對"
+        parentCardLabel: "我已準備好出示優惠券核對",
+        dailyCutoff: ''
     };
     
     // 月曆狀態
@@ -234,7 +235,8 @@
     
     // 輔助函數
     function getTodayDate() {
-        return new Date().toISOString().slice(0, 10);
+        const d = new Date();
+        return d.toISOString().slice(0, 10);
     }
     
     function getTomorrowDate() {
@@ -254,13 +256,19 @@
     }
     
     // 判斷是否為假日
-    const holidays2026 = ['2026-01-01', '2026-02-17', '2026-02-18', '2026-02-19', '2026-04-03', '2026-04-04', '2026-04-06', '2026-05-01', '2026-05-25', '2026-06-19', '2026-07-01', '2026-10-01', '2026-10-02', '2026-10-21', '2026-12-25', '2026-12-26'];
+    const publicHolidays = ['2026-01-01', '2026-02-17', '2026-02-18', '2026-02-19', '2026-04-03', '2026-04-04', '2026-04-06', '2026-04-05', '2026-05-01', '2026-05-25', '2026-06-19', '2026-07-01', '2026-10-01', '2026-10-02', '2026-10-21', '2026-12-25', '2026-12-26'];
+    
+    function isWeekend(dateStr) {
+        const d = new Date(dateStr + 'T12:00:00');
+        return d.getDay() === 0 || d.getDay() === 6;
+    }
+    
+    function isPublicHoliday(dateStr) {
+        return publicHolidays.includes(dateStr);
+    }
     
     function isHoliday(dateStr) {
-        const date = new Date(dateStr + 'T12:00:00');
-        const day = date.getDay();
-        if (day === 0 || day === 6) return true;
-        return holidays2026.includes(dateStr);
+        return isWeekend(dateStr) || isPublicHoliday(dateStr);
     }
     
     // 獲取可預約時段
@@ -272,9 +280,12 @@
         return slots.filter(slot => !bookedTimes.includes(slot));
     }
     
-    // 獲取當日預約人數
+    // 獲取當日預約人數 (包括待處理和已完成)
     function getBookingCount(dateStr) {
-        return allBookings.filter(b => b.date === dateStr && b.status === 'pending').length;
+        // 計算當日的預約總數（待處理 + 已完成）
+        const pendingCount = allBookings.filter(b => b.date === dateStr && b.status === 'pending').length;
+        const completedCount = allCompletedBookings.filter(b => b.date === dateStr && b.status === 'completed').length;
+        return pendingCount + completedCount;
     }
     
     // 渲染月曆
@@ -298,7 +309,22 @@
             const isSelected = dateStr === selectedDate;
             const isHolidayDate = isHoliday(dateStr);
             const availableSlots = getAvailableSlots(dateStr);
-            const isAvailable = !isPast && availableSlots.length > 0;
+            
+            // 檢查是否可預約：不是過去日期、有可預約時段、且未超過截止時間
+            let isAvailable = !isPast && availableSlots.length > 0;
+            
+            // 檢查每日截止時間
+            if (!isPast && systemConfig.dailyCutoff) {
+                const tomorrow = new Date(dateStr + 'T00:00:00');
+                const now = new Date();
+                if (tomorrow.toDateString() === new Date(now.getTime() + 86400000).toDateString()) {
+                    const cutoffParts = systemConfig.dailyCutoff.split(':');
+                    const cutoff = new Date();
+                    cutoff.setHours(parseInt(cutoffParts[0]), parseInt(cutoffParts[1]), 0, 0);
+                    if (now > cutoff) isAvailable = false;
+                }
+            }
+            
             const bookingCount = getBookingCount(dateStr);
             
             let cellClass = 'cal-cell';
@@ -405,6 +431,10 @@
                 if (data.parentNotice) systemConfig.parentNotice = data.parentNotice;
                 if (data.parentScreenshotLabel) systemConfig.parentScreenshotLabel = data.parentScreenshotLabel;
                 if (data.parentCardLabel) systemConfig.parentCardLabel = data.parentCardLabel;
+                if (data.gradeNames) systemConfig.gradeNames = data.gradeNames;
+                if (data.letterNames) systemConfig.letterNames = data.letterNames;
+                if (data.limits) systemConfig.limits = data.limits;
+                if (data.dailyCutoff !== undefined) systemConfig.dailyCutoff = data.dailyCutoff;
                 
                 // 處理學校資料
                 if (Array.isArray(data.School) && data.School.length > 0) {
@@ -413,6 +443,11 @@
                     } else {
                         systemConfig.School = data.School;
                     }
+                } else if (systemConfig.School.length === 0) {
+                    systemConfig.School = [
+                        { name: '中學', enabled: true },
+                        { name: '小學', enabled: true }
+                    ];
                 }
             }
             
@@ -457,26 +492,32 @@
         }
     }
     
-    // 載入所有預約
+    // 載入所有預約 (待處理)
     async function loadBookings() {
         try {
             const snapshot = await db.collection("appointments").get();
-            allBookings = [];
+            const pendingList = [];
+            const completedList = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
+                const booking = {
+                    id: doc.id,
+                    school: data.school,
+                    class: data.class,
+                    studentId: data.studentId,
+                    date: data.date,
+                    time: data.time,
+                    status: data.status,
+                    type: data.type
+                };
                 if (data.status === 'pending') {
-                    allBookings.push({
-                        id: doc.id,
-                        school: data.school,
-                        class: data.class,
-                        studentId: data.studentId,
-                        date: data.date,
-                        time: data.time,
-                        status: data.status,
-                        type: data.type
-                    });
+                    pendingList.push(booking);
+                } else if (data.status === 'completed') {
+                    completedList.push(booking);
                 }
             });
+            allBookings = pendingList;
+            allCompletedBookings = completedList;
             renderCalendar();
             updateTimeSlots();
         } catch (error) {
@@ -491,6 +532,65 @@
         document.getElementById('captchaQuestion').textContent = `${num1} + ${num2} = ?`;
         document.getElementById('captchaAnswer').value = '';
         window.currentCaptchaAnswer = num1 + num2;
+    }
+    
+    // 處理待審核預約
+    async function processPendingReviews(date, time) {
+        try {
+            const snapshot = await db.collection("pending_reviews")
+                .where("date", "==", date)
+                .where("time", "==", time)
+                .where("reviewed", "==", false)
+                .get();
+            
+            if (snapshot.empty) return;
+            
+            const pendings = [];
+            snapshot.forEach(doc => pendings.push({ id: doc.id, ...doc.data() }));
+            
+            // 按提交時間排序
+            pendings.sort((a, b) => a.submitTime.localeCompare(b.submitTime));
+            
+            // 找出最早提交的預約
+            const earliestTime = pendings[0].submitTime;
+            const earliestGroup = pendings.filter(p => p.submitTime === earliestTime);
+            
+            let winner;
+            if (earliestGroup.length === 1) {
+                winner = earliestGroup[0];
+            } else {
+                const randomIndex = Math.floor(Math.random() * earliestGroup.length);
+                winner = earliestGroup[randomIndex];
+            }
+            
+            // 贏家存入 appointments
+            await db.collection("appointments").add({
+                school: winner.school,
+                class: winner.class,
+                studentId: winner.studentId,
+                date: winner.date,
+                time: winner.time,
+                status: 'pending',
+                type: 'voucher',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
+            
+            await db.collection("pending_reviews").doc(winner.id).update({ reviewed: true, result: 'success' });
+            
+            // 其他預約標記為失敗
+            for (let p of pendings) {
+                if (p.id !== winner.id) {
+                    await db.collection("pending_reviews").doc(p.id).update({ reviewed: true, result: 'failed' });
+                }
+            }
+            
+            return winner;
+            
+        } catch (error) {
+            console.error('處理審核失敗', error);
+            return null;
+        }
     }
     
     // 提交預約
@@ -516,6 +616,28 @@
         if (!confirmTerms || !confirmVoucher) {
             showMessage('請確認兩個核取方塊', true);
             return;
+        }
+        
+        // 檢查日期是否有效
+        const today = getTodayDate();
+        if (date <= today) {
+            showMessage('只能預約明天或以後的日期', true);
+            return;
+        }
+        
+        // 檢查每日截止時間
+        if (systemConfig.dailyCutoff) {
+            const tomorrow = new Date(date + 'T00:00:00');
+            const now = new Date();
+            if (tomorrow.toDateString() === new Date(now.getTime() + 86400000).toDateString()) {
+                const cutoffParts = systemConfig.dailyCutoff.split(':');
+                const cutoff = new Date();
+                cutoff.setHours(parseInt(cutoffParts[0]), parseInt(cutoffParts[1]), 0, 0);
+                if (now > cutoff) {
+                    showMessage('今日預約已截止，請選擇其他日期', true);
+                    return;
+                }
+            }
         }
         
         // 驗證碼檢查
@@ -567,22 +689,25 @@
             
             // 5秒後審核
             setTimeout(async () => {
-                await processPendingReviews(date, time);
+                const winner = await processPendingReviews(date, time);
                 await loadBookings();
                 
-                // 顯示我的預約
-                const myBookings = allBookings.filter(b => 
+                // 檢查我的預約是否成功
+                const myBooking = allBookings.find(b => 
                     b.school === school && 
                     b.class === className && 
                     b.studentId == studentId
                 );
                 
-                if (myBookings.length > 0) {
+                if (myBooking) {
                     const area = document.getElementById('myBookingArea');
                     const content = document.getElementById('myBookingContent');
-                    content.innerHTML = myBookings.map(b => 
-                        `<p>📅 ${b.date} ${b.time} - 待處理</p>`
-                    ).join('');
+                    content.innerHTML = `<p><strong>📅 日期：</strong>${myBooking.date}</p>
+                                        <p><strong>⏰ 時間：</strong>${myBooking.time}</p>
+                                        <p><strong>🏫 學校：</strong>${myBooking.school}</p>
+                                        <p><strong>🏫 班級：</strong>${myBooking.class}</p>
+                                        <p><strong>🆔 學號：</strong>${myBooking.studentId}</p>
+                                        <p style="color: #28a745;">✅ 預約成功</p>`;
                     area.style.display = 'block';
                     showMessage('✅ 預約成功！', false);
                 } else {
@@ -593,50 +718,6 @@
         } catch (error) {
             console.error('提交失敗', error);
             showMessage('❌ 預約失敗，請稍後再試', true);
-        }
-    }
-    
-    // 處理待審核預約
-    async function processPendingReviews(date, time) {
-        try {
-            const snapshot = await db.collection("pending_reviews")
-                .where("date", "==", date)
-                .where("time", "==", time)
-                .where("reviewed", "==", false)
-                .get();
-            
-            if (snapshot.empty) return;
-            
-            const pendings = [];
-            snapshot.forEach(doc => pendings.push({ id: doc.id, ...doc.data() }));
-            
-            // 按提交時間排序
-            pendings.sort((a, b) => a.submitTime.localeCompare(b.submitTime));
-            
-            // 只取最早的預約成功
-            const winner = pendings[0];
-            
-            await db.collection("appointments").add({
-                school: winner.school,
-                class: winner.class,
-                studentId: winner.studentId,
-                date: winner.date,
-                time: winner.time,
-                status: 'pending',
-                type: 'voucher',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            });
-            
-            await db.collection("pending_reviews").doc(winner.id).update({ reviewed: true, result: 'success' });
-            
-            // 其他預約標記為失敗
-            for (let i = 1; i < pendings.length; i++) {
-                await db.collection("pending_reviews").doc(pendings[i].id).update({ reviewed: true, result: 'failed' });
-            }
-            
-        } catch (error) {
-            console.error('處理審核失敗', error);
         }
     }
     
@@ -664,6 +745,15 @@
             return;
         }
         
+        // 檢查是否在2小時內
+        const bookingDateTime = new Date(`${booking.date}T${booking.time}:00`);
+        const now = new Date();
+        const hoursDiff = (bookingDateTime - now) / (1000 * 60 * 60);
+        if (hoursDiff <= 2 && hoursDiff > 0) {
+            showMessage('⚠️ 預約時間前2小時內無法修改或取消', true);
+            return;
+        }
+        
         try {
             await db.collection("appointments").doc(booking.id).delete();
             await loadBookings();
@@ -674,7 +764,8 @@
             
             const area = document.getElementById('myBookingArea');
             const content = document.getElementById('myBookingContent');
-            content.innerHTML = `<p>❌ 已取消預約 (${booking.date} ${booking.time})，請重新預約</p>`;
+            content.innerHTML = `<p style="color: #ff6b6b;">❌ 已取消預約 (${booking.date} ${booking.time})</p>
+                                <p>請重新選擇日期/時間並再次提交</p>`;
             area.style.display = 'block';
             showMessage('已取消您的預約，請重新選擇', false);
             
