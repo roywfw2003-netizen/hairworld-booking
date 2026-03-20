@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 家長優惠券預約 (v10.3 統一排序)</title>
+    <title>Hair World 家長優惠券預約 (v10.4 修復月曆)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -105,7 +105,7 @@
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
         
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.3 家長版 (統一排序)</div>
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.4 家長版 (修復月曆)</div>
         <div class="divider"></div>
         
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
@@ -162,7 +162,8 @@
     let adminPassword = config.adminPassword;
     let staffPassword = config.staffPassword;
 
-    let studentYear = new Date().getFullYear(), studentMonth = new Date().getMonth();
+    let studentYear = new Date().getFullYear();
+    let studentMonth = new Date().getMonth();
     let currentSelectedDate = getTomorrowStr();
 
     function getTodayStr() { return new Date().toISOString().slice(0,10); }
@@ -230,6 +231,7 @@
     function isWeekend(d) { const day = new Date(d+'T12:00').getDay(); return day===0||day===6; }
     function isHoliday(d) { return isWeekend(d) || isPublicHoliday(d); }
 
+    // 渲染月曆
     function renderCalendar() {
         const year = studentYear, month = studentMonth;
         const first = new Date(year, month, 1).getDay();
@@ -256,15 +258,23 @@
             html += `<div class="${cls}" data-date="${ds}"><span class="day-number">${d}</span>${mark}${countMark}</div>`;
         }
         document.getElementById('studentCalGrid').innerHTML = html;
+        
+        // 綁定日期點擊事件
         document.querySelectorAll('#studentCalGrid .cal-cell:not(.empty-cell)').forEach(cell => {
-            cell.addEventListener('click', function() {
-                const date = this.dataset.date;
-                if (date <= getTodayStr()) { showFeedback('只能預約明天或以後的日期', true); return; }
-                currentSelectedDate = date;
-                renderTimeSlots(date);
-                renderCalendar();
-            });
+            cell.removeEventListener('click', handleDateClick);
+            cell.addEventListener('click', handleDateClick);
         });
+    }
+    
+    function handleDateClick(e) {
+        const date = this.dataset.date;
+        if (date <= getTodayStr()) { 
+            showFeedback('只能預約明天或以後的日期', true); 
+            return; 
+        }
+        currentSelectedDate = date;
+        renderTimeSlots(date);
+        renderCalendar();
     }
 
     function renderTimeSlots(date) {
@@ -274,6 +284,31 @@
         const avail = getAvailableTimeSlots(date);
         if (avail.length === 0) { sel.innerHTML = '<option>本日已滿</option>'; note.innerText = '⚠️ 所有時段已被預約'; }
         else { sel.innerHTML = avail.map(t => `<option value="${t}">${t}</option>`).join(''); note.innerText = `可預約時段 (共 ${avail.length} 個)`; }
+    }
+
+    // 月曆切換函數
+    function prevMonth() {
+        studentMonth--;
+        if (studentMonth < 0) {
+            studentMonth = 11;
+            studentYear--;
+        }
+        renderCalendar();
+        // 重置選中的日期
+        currentSelectedDate = getTomorrowStr();
+        renderTimeSlots(currentSelectedDate);
+    }
+    
+    function nextMonth() {
+        studentMonth++;
+        if (studentMonth > 11) {
+            studentMonth = 0;
+            studentYear++;
+        }
+        renderCalendar();
+        // 重置選中的日期
+        currentSelectedDate = getTomorrowStr();
+        renderTimeSlots(currentSelectedDate);
     }
 
     function getGradeNumber(g) {
@@ -300,6 +335,10 @@
 
     document.getElementById('gradeSelect').addEventListener('change', updateLetterSelect);
     document.getElementById('letterSelect').addEventListener('change', updateStudentIdSelect);
+
+    // 綁定月曆切換按鈕
+    document.getElementById('studentPrevMonth').addEventListener('click', prevMonth);
+    document.getElementById('studentNextMonth').addEventListener('click', nextMonth);
 
     async function createBooking(booking) {
         try {
@@ -429,7 +468,6 @@
 
         await fetchAllBookings();
 
-        // 檢查是否已有相同學生的待處理預約
         const className = grade + letter;
         const existing = bookings.find(b => 
             b.school === school && 
@@ -464,7 +502,6 @@
                         await fetchAllBookings();
                         renderCalendar();
                         
-                        // 顯示成功資訊（按更新時間排序）
                         const myBookings = bookings.filter(b => 
                             b.school === school && 
                             b.class === className && 
@@ -478,117 +515,4 @@
                         
                         let contentHtml = '';
                         myBookings.forEach(b => {
-                            const statusText = b.status === 'pending' ? '待處理' : 
-                                             b.status === 'completed' ? '已完成' : 
-                                             b.status === 'no-show' ? '未到達' : b.status;
-                            contentHtml += `<p>📅 ${b.date} ${b.time} - ${statusText}</p>`;
-                        });
-                        
-                        document.getElementById('studentInfoArea').style.display = 'block';
-                        document.getElementById('studentInfoContent').innerHTML = contentHtml;
-                    } else {
-                        showFeedback('⏰ 已經有人搶先一步，請重新預約', true);
-                    }
-                } else {
-                    showFeedback('⏰ 已經有人搶先一步，請重新預約', true);
-                }
-                submitting = false;
-                document.getElementById('submitBooking').disabled = false;
-            }, REVIEW_WINDOW_MS + 500);
-        } else {
-            showFeedback('❌ 預約失敗', true);
-            submitting = false;
-            document.getElementById('submitBooking').disabled = false;
-        }
-    });
-
-    // 修改預約功能
-    async function performModify(email, school, className, studentId) {
-        const conditions = [];
-        if (email) conditions.push(b => b.email === email);
-        if (school) conditions.push(b => b.school === school);
-        if (className) conditions.push(b => b.class === className);
-        if (studentId) conditions.push(b => b.studentId == studentId);
-
-        if (conditions.length === 0) {
-            showFeedback('請至少填寫一個欄位以定位原預約', true);
-            return;
-        }
-
-        const found = bookings.find(b => 
-            b.status === 'pending' && b.type === 'voucher' && conditions.every(cond => cond(b))
-        );
-
-        if (!found) {
-            showFeedback('找不到匹配的待處理預約記錄 (請確認輸入資訊與原預約一致)', true);
-            return;
-        }
-
-        const canceled = found;
-        const today = getTodayStr();
-        
-        const success = await deleteBookingById(canceled.id);
-        if (!success) {
-            showFeedback('刪除失敗，請稍後再試', true);
-            return;
-        }
-
-        bookings = bookings.filter(b => b.id !== canceled.id);
-        await fetchAllBookings();
-
-        currentSelectedDate = getTomorrowStr();
-        renderTimeSlots(currentSelectedDate);
-        renderCalendar();
-
-        const area = document.getElementById('studentInfoArea');
-        const content = document.getElementById('studentInfoContent');
-        content.innerHTML = `<p class="cancel-note">❌ 已取消下列預約：</p><p><strong>📅 日期：</strong>${canceled.date}</p><p><strong>⏰ 時間：</strong>${canceled.time}</p><p><strong>🏫 學校：</strong>${canceled.school}</p><p><strong>🏫 班級：</strong>${canceled.class}</p><p><strong>🆔 學號：</strong>${canceled.studentId}</p><p>請重新選擇日期/時間並再次提交</p>`;
-        area.style.display = 'block';
-        showFeedback('已取消您的預約，請重新選擇', false);
-    }
-
-    document.getElementById('modifyBookingBtn').addEventListener('click', function() {
-        const email = ''; // 家長版沒有 email 欄位
-        const school = document.getElementById('school').value;
-        const grade = document.getElementById('gradeSelect').value;
-        const letter = document.getElementById('letterSelect').value;
-        const studentId = document.getElementById('studentId').value;
-        const className = grade + letter;
-        performModify(email, school, className, studentId);
-    });
-
-    document.getElementById('studentPrevMonth').addEventListener('click', ()=>{ studentMonth--; if(studentMonth<0){studentMonth=11; studentYear--;} renderCalendar(); });
-    document.getElementById('studentNextMonth').addEventListener('click', ()=>{ studentMonth++; if(studentMonth>11){studentMonth=0; studentYear++;} renderCalendar(); });
-
-    function generateCaptcha() {
-        const n1 = Math.floor(Math.random()*10)+1, n2 = Math.floor(Math.random()*10)+1;
-        document.getElementById('captchaQuestion').textContent = `${n1} + ${n2} = ?`;
-    }
-    function toggleCaptcha() {
-        const container = document.getElementById('captchaContainer');
-        if (config.enableCaptcha) { container.style.display = 'block'; generateCaptcha(); } else container.style.display = 'none';
-    }
-
-    async function init() {
-        await auth.signInAnonymously();
-        await fetchConfig();
-        await fetchAllBookings();
-
-        document.getElementById('screenshotLabel').textContent = config.parentScreenshotLabel;
-        document.getElementById('voucherCardLabel').textContent = config.parentCardLabel;
-        document.getElementById('bookingNoticeContent').innerHTML = (config.parentNotice || '').replace(/\n/g, '<br>');
-        toggleCaptcha();
-
-        const schoolSel = document.getElementById('school');
-        (config.School || []).forEach(s => { if (s.enabled) { let opt = document.createElement('option'); opt.value = s.name; opt.textContent = s.name; schoolSel.appendChild(opt); } });
-        const gradeSel = document.getElementById('gradeSelect');
-        (config.gradeNames || []).forEach(g => { let opt = document.createElement('option'); opt.value = g; opt.textContent = g; gradeSel.appendChild(opt); });
-
-        renderCalendar();
-        renderTimeSlots(currentSelectedDate);
-    }
-    init();
-})();
-</script>
-</body>
-</html>
+                            const statusText = b.status === 'pending' ? '待處理' :
