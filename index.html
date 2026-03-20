@@ -181,7 +181,7 @@
             <div class="form-group" id="group-class"><label class="required" id="label-class">班別</label><select id="letterSelect"><option value="">請先選擇年級</option></select></div>
             <div class="form-group" id="group-studentId"><label class="required" id="label-studentId">學號</label><select id="studentId"><option value="">請先選擇年級與班別</option></select></div>
             <div class="student-calendar">
-                <div class="cal-title"><span>預約人數</span><div class="help-icon" title="紅色數字為管理員設定的影子標記或當日預約人數">?</div></div>
+                <div class="cal-title"><span>預約人數</span><div class="help-icon" title="紅色數字為當日待處理預約人數">?</div></div>
                 <div class="cal-header"><h4 id="studentCalMonthYear"></h4><div class="cal-nav"><button id="studentPrevMonth">←</button><button id="studentNextMonth">→</button></div></div>
                 <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
                 <div id="studentCalGrid" class="cal-grid"></div>
@@ -464,7 +464,7 @@
         <button class="back-btn" id="backToBookingBtn">⟵ 返回預約頁</button>
     </div>
 
-    <!-- 員工專區頁面 (待處理分開，其餘合併) -->
+    <!-- 員工專區頁面 -->
     <div id="staffPage" class="page hidden">
         <div class="staff-header">
             <h3>🧑‍💼 員工工作區</h3>
@@ -606,7 +606,7 @@
         const suspicious = getSuspiciousActivities();
         const tableDiv = document.getElementById('suspiciousTable');
         if (suspicious.length === 0) { tableDiv.innerHTML = '<div style="padding:10px; text-align:center;">✅ 目前無可疑活動</div>'; return; }
-        let html = '<table><thead><tr><th>時間</th><th>學校</th><th>班級</th><th>學號</th><th>日期</th><th>時間</th></tr></thead><tbody>';
+        let html = '表格<thead><tr><th>時間</th><th>學校</th><th>班級</th><th>學號</th><th>日期</th><th>時間</th></tr></thead><tbody>';
         suspicious.sort((a,b) => b.timestamp - a.timestamp).forEach(a => {
             const timeStr = new Date(a.timestamp).toLocaleTimeString('zh-HK', { hour12: false });
             html += `<tr><td>${timeStr}</td><td>${a.school}</td><td>${a.class}</td><td>${a.studentId}</td><td>${a.date}</td><td>${a.time}</td></tr>`;
@@ -739,7 +739,6 @@
                     config.School = config.School.map(name => ({ name, short: name.substring(0,1), enabled: true }));
                 }
                 
-                // 更新師傅下拉選單
                 const staffBarber = document.getElementById('staffBarber');
                 if (staffBarber) {
                     staffBarber.innerHTML = '<option value="">請選擇師傅</option>';
@@ -1386,11 +1385,13 @@
             else if (holiday) cls += ' holiday';
             if (selected) cls += ' selected';
             const mark = (unavailable || full) ? '<span class="full-mark">✖</span>' : '';
+            
+            // 獲取該日期的待處理預約數量
+            const pendingCount = studentBookings.filter(b => b.date === dateStr && b.status === 'pending').length;
             let extraMark = '';
-            if (syncMain) {
-                const count = bookings.filter(b => b.date === dateStr && b.status === 'pending').length;
-                if (count > 0) extraMark = `<span class="booking-count-red">${count}</span>`;
-            } else {
+            if (syncMain && pendingCount > 0) {
+                extraMark = `<span class="booking-count-red">${pendingCount}</span>`;
+            } else if (!syncMain) {
                 const shadowMark = shadowMarks[dateStr];
                 if (shadowMark) extraMark = `<span class="shadow-mark">${shadowMark}</span>`;
             }
@@ -1507,14 +1508,12 @@
 
         pendingList.sort((a, b) => a.time?.localeCompare(b.time || '') || 0);
         
-        // 已完成按更新時間排序
         completedList.sort((a, b) => {
             const aTime = a.updatedAt || a.completedAt || '';
             const bTime = b.updatedAt || b.completedAt || '';
             return bTime.localeCompare(aTime);
         });
         
-        // 未到達按更新時間排序
         noshowList.sort((a, b) => {
             const aTime = a.updatedAt || a.noShowAt || '';
             const bTime = b.updatedAt || b.noShowAt || '';
@@ -1540,14 +1539,12 @@
 
         pendingList.sort((a, b) => a.time?.localeCompare(b.time || '') || 0);
         
-        // 已完成按更新時間排序
         completedList.sort((a, b) => {
             const aTime = a.updatedAt || a.completedAt || '';
             const bTime = b.updatedAt || b.completedAt || '';
             return bTime.localeCompare(aTime);
         });
         
-        // 未到達按更新時間排序
         noshowList.sort((a, b) => {
             const aTime = a.updatedAt || a.noShowAt || '';
             const bTime = b.updatedAt || b.noShowAt || '';
@@ -1574,9 +1571,9 @@
         if (config.showInRecords.barber) headers.push('師傅');
         headers.push('日期', '時間', '操作');
 
-        let html = '<table><thead><tr>';
+        let html = '表格<thead>得到';
         headers.forEach(h => html += `<th>${h}</th>`);
-        html += '</tr></thead><tbody>';
+        html += '</thead><tbody>';
 
         bookingsArray.forEach(b => {
             html += '<tr>';
@@ -1683,7 +1680,6 @@
         document.getElementById('completedCount').innerText = completed.length;
         document.getElementById('noshowCount').innerText = noshow.length;
 
-        // 學生待處理列表
         const studentDiv = document.getElementById('studentPendingList');
         studentDiv.innerHTML = '';
         if (studentPending.length === 0) studentDiv.innerHTML = '<div style="padding:10px; text-align:center;">無學生待處理預約</div>';
@@ -1707,7 +1703,6 @@
             });
         }
 
-        // 家長待處理列表 - 直接改為已完成按鈕
         const parentDiv = document.getElementById('parentPendingList');
         parentDiv.innerHTML = '';
         if (parentPending.length === 0) parentDiv.innerHTML = '<div style="padding:10px; text-align:center;">無家長待處理預約</div>';
@@ -1731,7 +1726,6 @@
             });
         }
 
-        // 處理中列表
         const processingDiv = document.getElementById('processingList');
         processingDiv.innerHTML = '';
         if (processing.length === 0) processingDiv.innerHTML = '<div style="padding:10px; text-align:center;">無處理中預約</div>';
@@ -1752,9 +1746,7 @@
             });
         }
 
-        // 已完成預約 - 按更新時間排序
         renderStaffList('completed', completed, true);
-        // 未到達預約 - 按更新時間排序
         renderStaffList('noshow', noshow, false);
     }
 
@@ -1762,7 +1754,6 @@
         const container = document.getElementById(type === 'completed' ? 'completedItems' : 'noshowItems');
         if (!container) return;
         
-        // 按更新時間排序（最新的在上）
         const sorted = items.sort((a, b) => {
             const aTime = a.updatedAt || (type === 'completed' ? a.completedAt : a.noShowAt) || '';
             const bTime = b.updatedAt || (type === 'completed' ? b.completedAt : b.noShowAt) || '';
@@ -1787,7 +1778,6 @@
             if (config.showInRecords.barber && b.barber) info += ` 師傅:${b.barber}`;
             if (config.showInRecords.email && b.email) info += ` 📧${b.email}`;
             
-            // 顯示更新時間
             let updateTimeStr = '';
             const updateTime = b.updatedAt || (type === 'completed' ? b.completedAt : b.noShowAt);
             if (updateTime) {
