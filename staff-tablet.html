@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-    <title>Hair World 員工工作區 (iPad版)</title>
+    <title>Hair World 員工工作區 (iPad版 - 無密碼)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -60,16 +60,10 @@
         .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 20px; }
         .form-group { flex: 1; min-width: 120px; }
         .form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: #77450E; margin-bottom: 4px; }
-        .password-toast { position: fixed; top: 20px; right: 20px; background: #333; color: white; padding: 12px 20px; border-radius: 40px; font-size: 0.9rem; z-index: 9999; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        .password-toast.success { background: #28a745; }
-        .password-toast.error { background: #dc3545; }
         .manual-buttons { display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap; }
         .btn-manual-student { background: #F25C0A; color: white; box-shadow: 0 3px 0 #B04400; }
         .btn-manual-parent { background: #28a745; color: white; box-shadow: 0 3px 0 #1e7e34; }
         .btn-manual-student:active, .btn-manual-parent:active { transform: translateY(3px); box-shadow: none; }
-        .lock-status { display: inline-flex; align-items: center; gap: 8px; background: #FFE6D3; padding: 8px 16px; border-radius: 40px; font-size: 0.9rem; }
-        .unlock-area { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
-        .unlock-area input { max-width: 180px; }
         .edit-mode-badge { background: #ffc107; color: #333; padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; }
     </style>
 </head>
@@ -77,10 +71,8 @@
     <div class="staff-container">
         <h1>
             <i class="fa-solid fa-scissors"></i> Hair World 員工工作區
-            <span style="font-size:0.8rem; margin-left:auto; color:#aaa;">iPad版 v2.0</span>
+            <span style="font-size:0.8rem; margin-left:auto; color:#aaa;">iPad版 v3.0 (無密碼)</span>
         </h1>
-        
-        <div id="passwordToast" class="password-toast"></div>
         
         <div class="date-bar">
             <label for="staffDatePicker"><i class="fa-regular fa-calendar"></i> 日期：</label>
@@ -107,15 +99,6 @@
         <div class="section-block" style="background:#e6f3ff; border-color:#17a2b8;">
             <h3><i class="fa-solid fa-pen-to-square"></i> 手動登記 (現場剪髮)</h3>
             
-            <!-- 密碼解鎖區域 -->
-            <div class="unlock-area">
-                <div class="lock-status" id="lockStatus">
-                    <i class="fa-solid fa-lock"></i> 已鎖定
-                </div>
-                <input type="password" id="manualPassword" placeholder="輸入操作密碼">
-                <button class="btn-small" id="unlockManualBtn">解鎖</button>
-            </div>
-            
             <div class="form-row">
                 <div class="form-group"><label>學校名稱</label><select id="staffSchool"><option value="">請選擇</option></select></div>
                 <div class="form-group"><label>年級</label><select id="staffGradeSelect"><option value="">請選擇</option></select></div>
@@ -126,8 +109,8 @@
             </div>
             
             <div class="manual-buttons">
-                <button class="btn btn-manual-student" id="submitStudentWalkin" disabled>👨‍🎓 學生剪髮登記</button>
-                <button class="btn btn-manual-parent" id="submitParentWalkin" disabled>🎟️ 優惠券剪髮登記</button>
+                <button class="btn btn-manual-student" id="submitStudentWalkin">👨‍🎓 學生剪髮登記</button>
+                <button class="btn btn-manual-parent" id="submitParentWalkin">🎟️ 優惠券剪髮登記</button>
             </div>
             <div class="note" style="margin-top:10px; font-size:0.85rem; color:#B45A2A;">
                 <i class="fa-solid fa-info-circle"></i> 登記前會自動檢查該學生今日是否有預約記錄，如有重複將拒絕登記。
@@ -158,7 +141,7 @@
                 <div class="summary-card"><div class="number" id="totalVouchers">0</div><div class="label">已買優惠券</div></div>
             </div>
         </div>
-        <div class="footer">@vison 2.0 iPad版 | 手動登記需密碼解鎖 (30分鐘有效)</div>
+        <div class="footer">@vison 3.0 iPad版 | 手動登記無需密碼</div>
     </div>
 
 <script>
@@ -176,55 +159,6 @@
     const auth = firebase.auth();
     auth.signInAnonymously().catch(console.error);
 
-    // ========== 密碼設定 ==========
-    let MANUAL_PASSWORD = "staff123";  // 預設密碼，可從 config 讀取
-    let manualUnlocked = false;
-    let passwordLastVerified = 0;
-    const PASSWORD_VALID_DURATION = 30 * 60 * 1000; // 30分鐘有效
-
-    function showToast(message, isSuccess = true) {
-        const toast = document.getElementById('passwordToast');
-        toast.textContent = message;
-        toast.className = 'password-toast ' + (isSuccess ? 'success' : 'error');
-        toast.style.display = 'block';
-        setTimeout(() => { toast.style.display = 'none'; }, 3000);
-    }
-
-    async function checkManualPassword() {
-        const now = Date.now();
-        if (manualUnlocked && (now - passwordLastVerified < PASSWORD_VALID_DURATION)) {
-            return true;
-        }
-        const inputPass = document.getElementById('manualPassword').value;
-        if (inputPass === MANUAL_PASSWORD) {
-            manualUnlocked = true;
-            passwordLastVerified = now;
-            const lockStatus = document.getElementById('lockStatus');
-            lockStatus.innerHTML = '<i class="fa-solid fa-unlock-alt"></i> 已解鎖 (30分鐘有效)';
-            lockStatus.style.background = '#d4edda';
-            document.getElementById('submitStudentWalkin').disabled = false;
-            document.getElementById('submitParentWalkin').disabled = false;
-            showToast('✓ 密碼正確，30分鐘內可操作', true);
-            return true;
-        } else {
-            showToast('✗ 密碼錯誤', false);
-            return false;
-        }
-    }
-
-    function lockManual() {
-        manualUnlocked = false;
-        const lockStatus = document.getElementById('lockStatus');
-        lockStatus.innerHTML = '<i class="fa-solid fa-lock"></i> 已鎖定';
-        lockStatus.style.background = '#ffe6e6';
-        document.getElementById('submitStudentWalkin').disabled = true;
-        document.getElementById('submitParentWalkin').disabled = true;
-    }
-
-    document.getElementById('unlockManualBtn').addEventListener('click', async () => {
-        await checkManualPassword();
-    });
-
     let bookings = [];
     let config = { 
         School: [
@@ -235,11 +169,8 @@
         gradeNames: ['小一', '小二', '小三', '小四', '小五', '小六'], 
         letterNames: ['A','B','C','D','E','F','G','H'], 
         limits: {},
-        staffPassword: "staff123",
         staffEditPassword: "edit123"
     };
-    let staffCompletedSort = { field: 'time', dir: 'desc' };
-    let staffNoshowSort = { field: 'time', dir: 'desc' };
     let staffEditMode = false;
 
     function getTodayStr() { const d = new Date(); return d.toISOString().slice(0,10); }
@@ -271,9 +202,6 @@
                 if (data.letterNames) config.letterNames = data.letterNames;
                 if (data.limits) config.limits = data.limits;
                 if (data.School) config.School = data.School;
-                if (data.staffPassword) {
-                    MANUAL_PASSWORD = data.staffPassword;
-                }
                 
                 // 更新師傅下拉選單
                 const barberSelect = document.getElementById('staffBarber');
@@ -345,8 +273,6 @@
 
     // ========== 手動登記通用函數 ==========
     async function manualRegister(type) {
-        if (!await checkManualPassword()) return;
-        
         const school = document.getElementById('staffSchool').value;
         const grade = document.getElementById('staffGradeSelect').value;
         const letter = document.getElementById('staffLetterSelect').value;
@@ -629,9 +555,6 @@
         document.getElementById('staffLetterSelect').addEventListener('change', staffUpdateStudentIdSelect);
         document.getElementById('staffDatePicker').value = getTodayStr();
         renderStaffPage(getTodayStr());
-        
-        // 初始鎖定狀態
-        lockManual();
     })();
 })();
 </script>
