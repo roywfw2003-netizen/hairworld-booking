@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 學生預約 (v10.3 統一排序)</title>
+    <title>Hair World 學生預約 (v10.6 修復手動登記)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -13,6 +13,7 @@
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        /* 完整樣式與之前相同，此處省略以節省篇幅，實際使用時請保留完整樣式 */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #FFF5E6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 12px 0 30px 0; margin: 0; }
         .app-container { width: 100%; max-width: 400px; background-color: white; border-radius: 32px 32px 0 0; box-shadow: 0 8px 30px rgba(247, 147, 49, 0.15); overflow: hidden; padding: 20px 20px 30px 20px; margin: 10px 12px; border: 1px solid #FFD8B2; }
@@ -205,7 +206,7 @@
             <button type="button" class="btn btn-secondary" id="modifyBookingBtn">✎ 修改我的預約</button>
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.3 (學生版)</div>
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.6 (學生版)</div>
         <div class="divider"></div>
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
         <div style="margin-top: 8px;"><label>員工專區</label><div class="admin-row"><input type="password" id="staffPass" placeholder="員工密碼" value=""><button class="btn-small" id="enterStaffBtn">進入員工頁面</button></div></div>
@@ -606,7 +607,7 @@
         const suspicious = getSuspiciousActivities();
         const tableDiv = document.getElementById('suspiciousTable');
         if (suspicious.length === 0) { tableDiv.innerHTML = '<div style="padding:10px; text-align:center;">✅ 目前無可疑活動</div>'; return; }
-        let html = '<table><thead><tr><th>時間</th><th>學校</th><th>班級</th><th>學號</th><th>日期</th><th>時間</th></tr></thead><tbody>';
+        let html = '<tr><thead> <tr><th>時間</th><th>學校</th><th>班級</th><th>學號</th><th>日期</th><th>時間</th></tr></thead><tbody>';
         suspicious.sort((a,b) => b.timestamp - a.timestamp).forEach(a => {
             const timeStr = new Date(a.timestamp).toLocaleTimeString('zh-HK', { hour12: false });
             html += `<tr><td>${timeStr}</td><td>${a.school}</td><td>${a.class}</td><td>${a.studentId}</td><td>${a.date}</td><td>${a.time}</td></tr>`;
@@ -1311,6 +1312,7 @@
     document.getElementById('gradeSelect').addEventListener('change', updateLetterSelect);
     document.getElementById('letterSelect').addEventListener('change', updateStudentIdSelect);
 
+    // 員工頁面年級連動函數
     function staffUpdateLetterSelect() {
         const gradeSelect = document.getElementById('staffGradeSelect');
         const letterSelect = document.getElementById('staffLetterSelect');
@@ -1320,9 +1322,15 @@
             return; 
         }
         letterSelect.innerHTML = '<option value="">請選擇班別</option>';
-        config.letterNames.forEach(letter => letterSelect.innerHTML += `<option value="${letter}">${letter}</option>`);
+        config.letterNames.forEach(letter => {
+            const opt = document.createElement('option');
+            opt.value = letter;
+            opt.textContent = letter;
+            letterSelect.appendChild(opt);
+        });
         staffUpdateStudentIdSelect();
     }
+    
     function staffUpdateStudentIdSelect() {
         const gradeName = document.getElementById('staffGradeSelect').value;
         const letter = document.getElementById('staffLetterSelect').value;
@@ -1332,12 +1340,16 @@
             return; 
         }
         const gradeNum = getGradeNumber(gradeName);
-        if (!gradeNum) { studentSelect.innerHTML = '<option value="">年級錯誤</option>'; return; }
+        if (!gradeNum) { 
+            studentSelect.innerHTML = '<option value="">年級錯誤</option>'; 
+            return; 
+        }
         const className = gradeNum + letter;
-        const limit = config.limits[className];
-        if (!limit) { studentSelect.innerHTML = '<option value="">該班級未設定人數上限</option>'; return; }
+        const limit = config.limits[className] || 25;
         let options = '<option value="">請選擇學號</option>';
-        for (let i = 1; i <= limit; i++) options += `<option value="${i}">${i}</option>`;
+        for (let i = 1; i <= limit; i++) {
+            options += `<option value="${i}">${i}</option>`;
+        }
         studentSelect.innerHTML = options;
     }
 
@@ -1574,12 +1586,12 @@
         if (config.showInRecords.barber) headers.push('師傅');
         headers.push('日期', '時間', '操作');
 
-        let html = '<table><thead><tr>';
+        let html = '<table><thead> either';
         headers.forEach(h => html += `<th>${h}</th>`);
-        html += '</tr></thead><tbody>';
+        html += ' </thead><tbody>';
 
         bookingsArray.forEach(b => {
-            html += '<tr>';
+            html += ' <tr>';
             if (config.showInRecords.email && isStudent) html += `<td>${b.email || ''}</td>`;
             if (config.showInRecords.school) html += `<td>${b.school || ''}</td>`;
             if (config.showInRecords.grade) {
@@ -1600,7 +1612,7 @@
             if (showDelete) actions += `<button class="action-btn delete-row-btn" data-id="${b.id}">刪除</button>`;
             html += `<td>${actions}</td></tr>`;
         });
-        html += '</tbody></table>';
+        html += '</tbody> </table>';
         return html;
     }
 
@@ -2064,9 +2076,22 @@
             document.getElementById('staffPage').classList.remove('hidden');
             await fetchAllBookings();
             applyStaffFieldSettings();
+            // 初始化員工頁面下拉選單
+            const staffGradeSelect = document.getElementById('staffGradeSelect');
+            staffGradeSelect.innerHTML = '<option value="">請選擇年級</option>';
+            config.gradeNames.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g;
+                opt.textContent = g;
+                staffGradeSelect.appendChild(opt);
+            });
+            const staffLetterSelect = document.getElementById('staffLetterSelect');
+            staffLetterSelect.innerHTML = '<option value="">請先選擇年級</option>';
             document.getElementById('staffDatePicker').value = getTodayStr();
             await renderStaffPage(getTodayStr());
-            setupStaffListSort();
+            // 綁定年級連動事件
+            staffGradeSelect.addEventListener('change', staffUpdateLetterSelect);
+            staffLetterSelect.addEventListener('change', staffUpdateStudentIdSelect);
         } else alert('員工密碼錯誤');
     });
 
@@ -2645,9 +2670,6 @@
         renderStudentCalendar();
         renderTimeSlots(currentSelectedDate);
         toggleCaptcha();
-
-        document.getElementById('staffGradeSelect')?.addEventListener('change', staffUpdateLetterSelect);
-        document.getElementById('staffLetterSelect')?.addEventListener('change', staffUpdateStudentIdSelect);
     })();
 })();
 </script>
