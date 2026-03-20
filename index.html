@@ -13,7 +13,7 @@
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* 完整樣式與之前相同，此處省略以節省篇幅，實際使用時請保留完整樣式 */
+        /* 完整樣式 */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #FFF5E6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 12px 0 30px 0; margin: 0; }
         .app-container { width: 100%; max-width: 400px; background-color: white; border-radius: 32px 32px 0 0; box-shadow: 0 8px 30px rgba(247, 147, 49, 0.15); overflow: hidden; padding: 20px 20px 30px 20px; margin: 10px 12px; border: 1px solid #FFD8B2; }
@@ -607,12 +607,12 @@
         const suspicious = getSuspiciousActivities();
         const tableDiv = document.getElementById('suspiciousTable');
         if (suspicious.length === 0) { tableDiv.innerHTML = '<div style="padding:10px; text-align:center;">✅ 目前無可疑活動</div>'; return; }
-        let html = '<tr><thead> <tr><th>時間</th><th>學校</th><th>班級</th><th>學號</th><th>日期</th><th>時間</th></tr></thead><tbody>';
+        let html = '<td><thead> <tr><th>時間</th><th>學校</th><th>班級</th><th>學號</th><th>日期</th><th>時間</th> </thead><tbody>';
         suspicious.sort((a,b) => b.timestamp - a.timestamp).forEach(a => {
             const timeStr = new Date(a.timestamp).toLocaleTimeString('zh-HK', { hour12: false });
-            html += `<tr><td>${timeStr}</td><td>${a.school}</td><td>${a.class}</td><td>${a.studentId}</td><td>${a.date}</td><td>${a.time}</td></tr>`;
+            html += ` <tr><td>${timeStr}</td><td>${a.school}</td><td>${a.class}</td><td>${a.studentId}</td><td>${a.date}</td><td>${a.time}</td></tr>`;
         });
-        html += '</tbody></table>';
+        html += '</tbody> </table>';
         tableDiv.innerHTML = html;
     }
     document.getElementById('clearSuspicious')?.addEventListener('click', function() {
@@ -995,6 +995,7 @@
         const schoolSelect = document.getElementById('school');
         if (schoolSelect) schoolSelect.required = config.visibleFields.school && config.requiredFields.school;
         
+        // 從 config 讀取主頁面文字
         document.getElementById('screenshotLabel').textContent = config.screenshotLabel;
         document.getElementById('studentCardLabel').textContent = config.studentCardLabel;
         document.getElementById('bookingNoticeContent').innerHTML = config.notice.replace(/\n/g, '<br>');
@@ -1586,12 +1587,12 @@
         if (config.showInRecords.barber) headers.push('師傅');
         headers.push('日期', '時間', '操作');
 
-        let html = '<table><thead> either';
+        let html = '<table><thead><tr>';
         headers.forEach(h => html += `<th>${h}</th>`);
-        html += ' </thead><tbody>';
+        html += '</tr></thead><tbody>';
 
         bookingsArray.forEach(b => {
-            html += ' <tr>';
+            html += '<tr>';
             if (config.showInRecords.email && isStudent) html += `<td>${b.email || ''}</td>`;
             if (config.showInRecords.school) html += `<td>${b.school || ''}</td>`;
             if (config.showInRecords.grade) {
@@ -1610,9 +1611,10 @@
             if (showComplete) actions += `<button class="action-btn complete-btn" data-id="${b.id}">完成</button>`;
             if (showRevert) actions += `<button class="action-btn revert-btn" data-id="${b.id}">返回</button>`;
             if (showDelete) actions += `<button class="action-btn delete-row-btn" data-id="${b.id}">刪除</button>`;
-            html += `<td>${actions}</td></tr>`;
+            html += `<td>${actions}</td>`;
+            html += '</tr>';
         });
-        html += '</tbody> </table>';
+        html += '</tbody></table>';
         return html;
     }
 
