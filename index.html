@@ -162,8 +162,6 @@
         .summary-card .label { font-size: 14px; color: #B04400; }
         .table-section { margin-bottom: 30px; }
         .table-section h4 { color: #B04400; margin-bottom: 12px; font-size: 18px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .badge-student { background: #F25C0A; }
-        .badge-parent { background: #28a745; }
     </style>
 </head>
 <body>
@@ -346,8 +344,17 @@
         }
     }
 
-    // 判斷是否為假日
-    const publicHolidays = ['2026-01-01', '2026-02-17', '2026-02-18', '2026-02-19', '2026-04-03', '2026-04-04', '2026-04-06', '2026-04-05', '2026-05-01', '2026-05-25', '2026-06-19', '2026-07-01', '2026-10-01', '2026-10-02', '2026-10-21', '2026-12-25', '2026-12-26'];
+    // 判斷是否為假日 - 更新到 2027 年 12 月
+    const publicHolidays = [
+        // 2026 年公眾假期
+        '2026-01-01', '2026-02-17', '2026-02-18', '2026-02-19', '2026-04-03', '2026-04-04', 
+        '2026-04-06', '2026-04-05', '2026-05-01', '2026-05-25', '2026-06-19', '2026-07-01', 
+        '2026-10-01', '2026-10-02', '2026-10-21', '2026-12-25', '2026-12-26',
+        // 2027 年公眾假期
+        '2027-01-01', '2027-02-06', '2027-02-07', '2027-02-08', '2027-03-26', '2027-03-27', 
+        '2027-03-29', '2027-04-05', '2027-05-01', '2027-05-14', '2027-06-09', '2027-07-01', 
+        '2027-10-01', '2027-10-02', '2027-10-19', '2027-12-25', '2027-12-26'
+    ];
     function isWeekend(dateStr) { const d = new Date(dateStr+'T12:00:00'); return d.getDay()===0 || d.getDay()===6; }
     function isPublicHoliday(dateStr) { return publicHolidays.includes(dateStr); }
     function isHoliday(dateStr) { return isWeekend(dateStr) || isPublicHoliday(dateStr); }
@@ -511,9 +518,9 @@
         document.getElementById('totalStudents').innerText = totalStudents;
         document.getElementById('totalVouchers').innerText = totalVouchers;
         
-        const config = { barbers: ['師傅A', '師傅B', '師傅C', '師傅D'] };
+        const configData = { barbers: ['師傅A', '師傅B', '師傅C', '師傅D'] };
         const barberStats = {};
-        config.barbers.forEach(n => barberStats[n] = { services:0, vouchers:0 });
+        configData.barbers.forEach(n => barberStats[n] = { services:0, vouchers:0 });
         completed.forEach(b => {
             if (b.barber && barberStats[b.barber]) {
                 barberStats[b.barber].services++;
@@ -525,10 +532,10 @@
         chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: config.barbers,
+                labels: configData.barbers,
                 datasets: [
-                    { label: '服務量 (已剪)', data: config.barbers.map(n=>barberStats[n].services), backgroundColor: '#F25C0A', borderRadius: 10 },
-                    { label: '優惠券售出', data: config.barbers.map(n=>barberStats[n].vouchers), backgroundColor: '#28a745', borderRadius: 10 }
+                    { label: '服務量 (已剪)', data: configData.barbers.map(n=>barberStats[n].services), backgroundColor: '#F25C0A', borderRadius: 10 },
+                    { label: '優惠券售出', data: configData.barbers.map(n=>barberStats[n].vouchers), backgroundColor: '#28a745', borderRadius: 10 }
                 ]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
@@ -544,7 +551,8 @@
                 renderAdminCalendar();
                 renderStudentTables();
                 renderParentTables();
-                showDateDetail(document.getElementById('selectedDateTitle').innerText.split(' ')[0]);
+                const currentDate = document.getElementById('selectedDateTitle').innerText.split(' ')[0];
+                if (currentDate && currentDate !== '點擊日期查看預約') showDateDetail(currentDate);
             }
         }
         if (e.target.classList.contains('revert-btn')) {
@@ -567,7 +575,21 @@
                 renderAdminCalendar();
                 renderStudentTables();
                 renderParentTables();
-                showDateDetail(document.getElementById('selectedDateTitle').innerText.split(' ')[0]);
+                const currentDate = document.getElementById('selectedDateTitle').innerText.split(' ')[0];
+                if (currentDate && currentDate !== '點擊日期查看預約') showDateDetail(currentDate);
+            }
+        }
+        if (e.target.classList.contains('delete-btn')) {
+            const item = e.target.closest('.appointment-item');
+            const id = item?.dataset.id;
+            if (id && confirm('確定刪除？')) {
+                await deleteBookingById(id);
+                await fetchAllBookings();
+                renderAdminCalendar();
+                renderStudentTables();
+                renderParentTables();
+                const currentDate = document.getElementById('selectedDateTitle').innerText.split(' ')[0];
+                if (currentDate && currentDate !== '點擊日期查看預約') showDateDetail(currentDate);
             }
         }
     });
@@ -594,6 +616,33 @@
             loadStats();
             document.getElementById('syncMainCalendar').checked = syncMain;
         } else alert('密碼錯誤');
+    });
+
+    // 清除昨日未到達記錄
+    document.getElementById('cleanStudentOldNoShow')?.addEventListener('click', async function() {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0,10);
+        const oldNoshow = studentBookings.filter(b => b.status === 'no-show' && b.date <= yesterdayStr);
+        for (let b of oldNoshow) {
+            await deleteBookingById(b.id);
+        }
+        await fetchAllBookings();
+        renderStudentTables();
+        alert('已清除昨日及之前的學生未到達記錄');
+    });
+    
+    document.getElementById('cleanParentOldNoShow')?.addEventListener('click', async function() {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0,10);
+        const oldNoshow = parentBookings.filter(b => b.status === 'no-show' && b.date <= yesterdayStr);
+        for (let b of oldNoshow) {
+            await deleteBookingById(b.id);
+        }
+        await fetchAllBookings();
+        renderParentTables();
+        alert('已清除昨日及之前的家長未到達記錄');
     });
 
     // 影子月曆功能
@@ -623,6 +672,26 @@
         const num = parseInt(input, 10);
         if (isNaN(num) || num < 1 || num > 9) delete shadowMarks[dateStr];
         else shadowMarks[dateStr] = num;
+        localStorage.setItem('hairWorldShadowMarks', JSON.stringify(shadowMarks));
+        renderShadowCalendar();
+    });
+    
+    document.getElementById('shadowPrevMonth').addEventListener('click', function() {
+        const date = new Date();
+        date.setMonth(date.getMonth() - 1);
+        renderShadowCalendar();
+    });
+    document.getElementById('shadowNextMonth').addEventListener('click', function() {
+        const date = new Date();
+        date.setMonth(date.getMonth() + 1);
+        renderShadowCalendar();
+    });
+    document.getElementById('clearShadowMonth').addEventListener('click', function() {
+        const now = new Date();
+        const monthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        for (let key in shadowMarks) {
+            if (key.startsWith(monthStr)) delete shadowMarks[key];
+        }
         localStorage.setItem('hairWorldShadowMarks', JSON.stringify(shadowMarks));
         renderShadowCalendar();
     });
