@@ -515,4 +515,113 @@
                         
                         let contentHtml = '';
                         myBookings.forEach(b => {
-                            const statusText = b.status === 'pending' ? '待處理' :
+                            const statusText = b.status === 'pending' ? '待處理' : 
+                                             b.status === 'completed' ? '已完成' : 
+                                             b.status === 'no-show' ? '未到達' : b.status;
+                            contentHtml += `<p>📅 ${b.date} ${b.time} - ${statusText}</p>`;
+                        });
+                        
+                        document.getElementById('studentInfoArea').style.display = 'block';
+                        document.getElementById('studentInfoContent').innerHTML = contentHtml;
+                    } else {
+                        showFeedback('⏰ 已經有人搶先一步，請重新預約', true);
+                    }
+                } else {
+                    showFeedback('⏰ 已經有人搶先一步，請重新預約', true);
+                }
+                submitting = false;
+                document.getElementById('submitBooking').disabled = false;
+            }, REVIEW_WINDOW_MS + 500);
+        } else {
+            showFeedback('❌ 預約失敗', true);
+            submitting = false;
+            document.getElementById('submitBooking').disabled = false;
+        }
+    });
+
+    async function performModify(email, school, className, studentId) {
+        const conditions = [];
+        if (email) conditions.push(b => b.email === email);
+        if (school) conditions.push(b => b.school === school);
+        if (className) conditions.push(b => b.class === className);
+        if (studentId) conditions.push(b => b.studentId == studentId);
+
+        if (conditions.length === 0) {
+            showFeedback('請至少填寫一個欄位以定位原預約', true);
+            return;
+        }
+
+        const found = bookings.find(b => 
+            b.status === 'pending' && b.type === 'voucher' && conditions.every(cond => cond(b))
+        );
+
+        if (!found) {
+            showFeedback('找不到匹配的待處理預約記錄 (請確認輸入資訊與原預約一致)', true);
+            return;
+        }
+
+        const canceled = found;
+        const today = getTodayStr();
+        
+        const success = await deleteBookingById(canceled.id);
+        if (!success) {
+            showFeedback('刪除失敗，請稍後再試', true);
+            return;
+        }
+
+        bookings = bookings.filter(b => b.id !== canceled.id);
+        await fetchAllBookings();
+
+        currentSelectedDate = getTomorrowStr();
+        renderTimeSlots(currentSelectedDate);
+        renderCalendar();
+
+        const area = document.getElementById('studentInfoArea');
+        const content = document.getElementById('studentInfoContent');
+        content.innerHTML = `<p class="cancel-note">❌ 已取消下列預約：</p><p><strong>📅 日期：</strong>${canceled.date}</p><p><strong>⏰ 時間：</strong>${canceled.time}</p><p><strong>🏫 學校：</strong>${canceled.school}</p><p><strong>🏫 班級：</strong>${canceled.class}</p><p><strong>🆔 學號：</strong>${canceled.studentId}</p><p>請重新選擇日期/時間並再次提交</p>`;
+        area.style.display = 'block';
+        showFeedback('已取消您的預約，請重新選擇', false);
+    }
+
+    document.getElementById('modifyBookingBtn').addEventListener('click', function() {
+        const email = '';
+        const school = document.getElementById('school').value;
+        const grade = document.getElementById('gradeSelect').value;
+        const letter = document.getElementById('letterSelect').value;
+        const studentId = document.getElementById('studentId').value;
+        const className = grade + letter;
+        performModify(email, school, className, studentId);
+    });
+
+    function generateCaptcha() {
+        const n1 = Math.floor(Math.random()*10)+1, n2 = Math.floor(Math.random()*10)+1;
+        document.getElementById('captchaQuestion').textContent = `${n1} + ${n2} = ?`;
+    }
+    function toggleCaptcha() {
+        const container = document.getElementById('captchaContainer');
+        if (config.enableCaptcha) { container.style.display = 'block'; generateCaptcha(); } else container.style.display = 'none';
+    }
+
+    async function init() {
+        await auth.signInAnonymously();
+        await fetchConfig();
+        await fetchAllBookings();
+
+        document.getElementById('screenshotLabel').textContent = config.parentScreenshotLabel;
+        document.getElementById('voucherCardLabel').textContent = config.parentCardLabel;
+        document.getElementById('bookingNoticeContent').innerHTML = (config.parentNotice || '').replace(/\n/g, '<br>');
+        toggleCaptcha();
+
+        const schoolSel = document.getElementById('school');
+        (config.School || []).forEach(s => { if (s.enabled) { let opt = document.createElement('option'); opt.value = s.name; opt.textContent = s.name; schoolSel.appendChild(opt); } });
+        const gradeSel = document.getElementById('gradeSelect');
+        (config.gradeNames || []).forEach(g => { let opt = document.createElement('option'); opt.value = g; opt.textContent = g; gradeSel.appendChild(opt); });
+
+        renderCalendar();
+        renderTimeSlots(currentSelectedDate);
+    }
+    init();
+})();
+</script>
+</body>
+</html>
