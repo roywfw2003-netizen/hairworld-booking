@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Hair World 家長優惠券預約 (v10.4 修復月曆)</title>
+    <title>Hair World 家長優惠券預約 (v10.5 修復月曆切換)</title>
     <!-- Firebase SDK 10.13.0 -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -75,7 +75,13 @@
             
             <div class="student-calendar">
                 <div class="cal-title"><span>預約人數</span><div class="help-icon" title="紅色數字為當日預約人數">?</div></div>
-                <div class="cal-header"><h4 id="studentCalMonthYear"></h4><div class="cal-nav"><button id="studentPrevMonth">←</button><button id="studentNextMonth">→</button></div></div>
+                <div class="cal-header">
+                    <h4 id="studentCalMonthYear"></h4>
+                    <div class="cal-nav">
+                        <button id="studentPrevMonth">←</button>
+                        <button id="studentNextMonth">→</button>
+                    </div>
+                </div>
                 <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
                 <div id="studentCalGrid" class="cal-grid"></div>
             </div>
@@ -105,7 +111,7 @@
             <div id="bookingNoticeArea" class="footer-note" style="margin-top: 15px;"><p><span class="highlight">📌 預約須知</span></p><div id="bookingNoticeContent"></div></div>
         </form>
         
-        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.4 家長版 (修復月曆)</div>
+        <div style="text-align: center; font-size: 10px; color: #ccc; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #FFD8B2;">@vison 10.5 家長版 (修復月曆切換)</div>
         <div class="divider"></div>
         
         <div style="margin-top: 12px;"><label>管理員專區</label><div class="admin-row"><input type="password" id="adminPass" placeholder="管理員密碼" value=""><button class="btn-small" id="viewCalendarBtn">查看所有記錄</button></div></div>
@@ -294,7 +300,7 @@
             studentYear--;
         }
         renderCalendar();
-        // 重置選中的日期
+        // 重置選中的日期為明天
         currentSelectedDate = getTomorrowStr();
         renderTimeSlots(currentSelectedDate);
     }
@@ -306,7 +312,7 @@
             studentYear++;
         }
         renderCalendar();
-        // 重置選中的日期
+        // 重置選中的日期為明天
         currentSelectedDate = getTomorrowStr();
         renderTimeSlots(currentSelectedDate);
     }
@@ -336,9 +342,18 @@
     document.getElementById('gradeSelect').addEventListener('change', updateLetterSelect);
     document.getElementById('letterSelect').addEventListener('change', updateStudentIdSelect);
 
-    // 綁定月曆切換按鈕
-    document.getElementById('studentPrevMonth').addEventListener('click', prevMonth);
-    document.getElementById('studentNextMonth').addEventListener('click', nextMonth);
+    // 重新綁定月曆切換按鈕（確保在每次頁面加載時正確綁定）
+    const prevBtn = document.getElementById('studentPrevMonth');
+    const nextBtn = document.getElementById('studentNextMonth');
+    
+    // 移除舊的監聽器，避免重複綁定
+    const newPrevBtn = prevBtn.cloneNode(true);
+    const newNextBtn = nextBtn.cloneNode(true);
+    prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
+    nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
+    
+    newPrevBtn.addEventListener('click', prevMonth);
+    newNextBtn.addEventListener('click', nextMonth);
 
     async function createBooking(booking) {
         try {
